@@ -1,5 +1,5 @@
 
-export const teamLinks = [
+const teamLinks = [
   {
     name: "Boston Celtics",
     link: "https://espn.com/nba/teams/roster?team=Bos",
@@ -100,3 +100,7 @@ export const teamLinks = [
   },
   { name: "Utah Jazz", link: "https://espn.com/nba/teams/roster?team=UTAH" },
 ];
+
+module.exports = {
+  teamLinks,
+};
