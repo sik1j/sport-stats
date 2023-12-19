@@ -4,16 +4,21 @@ import { JSDOM } from "jsdom";
 import { sql } from "@vercel/postgres";
 import { Team } from "./definitions";
 
+export async function getAllTeams() {
+  const data = await sql<Team>`SELECT * FROM teams`;
+  return data.rows;
+}
+
 export async function getAllPlayers() {
   try {
     let playersPerTeam = [{}] as [{ teamName: string; teamPlayers: string[] }];
 
-    const data = await sql<Team>`SELECT * FROM teams`;
+    const teams = await getAllTeams();
 
-    for (let team of data.rows) {
+    for (let team of teams) {
       const teamLink = team.link;
       const teamName = team.name;
-      const teamPlayers = await getAllPlayersFromTeam(teamLink);
+      const teamPlayers = await getAllPlayerLinksFromTeam(teamLink);
       playersPerTeam.push({ teamName, teamPlayers });
     }
 
@@ -26,7 +31,7 @@ export async function getAllPlayers() {
   }
 }
 
-export async function getAllPlayersFromTeam(teamLink: string) {
+export async function getAllPlayerLinksFromTeam(teamLink: string) {
   const response = await fetch(teamLink);
   const html = await response.text();
   const dom = new JSDOM(html);
@@ -47,6 +52,22 @@ export async function getAllPlayersFromTeam(teamLink: string) {
   );
 
   return playerLinks;
+}
+
+export async function getPlayerName(playerPageLink: string) {
+  const response = await fetch(playerPageLink);
+  const html = await response.text();
+  const dom = new JSDOM(html);
+
+  const document = dom.window.document;
+
+  const firstName = document.querySelector("h1.PlayerHeader__Name > span")!
+    .textContent!;
+  const lastName = document.querySelector(
+    "h1.PlayerHeader__Name > span + span"
+  )!.textContent!;
+
+  return { firstName, lastName };
 }
 
 export async function getPlayerStats(playerPageLink: string) {
