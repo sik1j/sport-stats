@@ -7,8 +7,11 @@ import { unstable_noStore as noStore } from "next/cache";
 
 export async function getAllTeams() {
   noStore();
-  
-  const data = await sql<Team>`SELECT * FROM teams`;
+
+  const data = await sql<Team>`
+    SELECT * FROM teams
+    ORDER BY name ASC
+  `;
   return data.rows;
 }
 
@@ -74,7 +77,6 @@ export async function getPlayerName(playerPageLink: string) {
 }
 
 export async function getPlayerStats(playerPageLink: string) {
-  
   async function getPlayerName(document: Document) {
     // should never be null right?
     const firstName = document.querySelector("h1.PlayerHeader__Name > span")!
