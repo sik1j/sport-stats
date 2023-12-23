@@ -1,17 +1,14 @@
-import { getPlayerStats } from "@/app/lib/actions";
+import { getPlayerName } from "@/app/lib/actions";
+import DisplayStats from "@/app/ui/displayStats";
 
 export default async function Page({
   params: { id },
 }: {
   params: { id: string };
 }) {
-  const {
-    firstName,
-    lastName,
-    playerGameStatsArr: stats,
-  } = await getPlayerStats(`https://www.espn.com/nba/player/_/id/${id}`);
-
-  const statKeys = Object.keys(stats[0]);
+  const { firstName, lastName } = await getPlayerName(
+    `https://www.espn.com/nba/player/_/id/${id}`
+  );
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
@@ -19,24 +16,7 @@ export default async function Page({
         <span className="text-4xl font-bold">{firstName}</span>
         <span className="text-4xl"> {lastName}</span>
       </h1>
-      <div>
-        {stats.map((stat) => {
-          return (
-            <div key={stat.date}>
-              {statKeys.map((key) => 
-                <span className="mr-4" key={key}>
-                    {key}
-                </span>
-              )}
-              {Object.entries(stat).map(([key, value]) => (
-                <span className="mr-4" key={key}>
-                  {value}
-                </span>
-              ))}
-            </div>
-          );
-        })}
-      </div>
+      <DisplayStats id={id} />
     </main>
   );
 }
