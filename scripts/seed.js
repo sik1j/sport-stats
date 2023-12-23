@@ -15,13 +15,15 @@ async function seedTeams(client) {
 
     console.log("Created table `teams`");
 
+    const teamLinks = await getAllTeamObjects();
+
     // insert all teams into the table
     const insertTeams = await Promise.all(
       teamLinks.map(
         (team) =>
           client.sql`
           INSERT INTO teams (name, link)
-          VALUES (${team.name}, ${team.link})
+          VALUES (${team.name}, ${'https://www.espn.com' + team.link})
         `
       )
     );
@@ -31,7 +33,7 @@ async function seedTeams(client) {
     return {
       createTable,
       teams: insertTeams,
-    }
+    };
   } catch (error) {
     console.error("Error seeding teams table:", error);
     throw error;
@@ -41,8 +43,9 @@ async function seedTeams(client) {
 async function main() {
   const client = await db.connect();
 
-  // DO NOT CALL AGAIN! This will create duplicate teams in the database.
-  // await seedTeams(client);
+  await seedTeams(client);
+
+  // await seedPlayers(client);
 
   await client.end();
 }
