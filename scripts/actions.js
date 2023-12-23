@@ -5,6 +5,28 @@ function getEspnIdFromLink(link) {
   return link.split("/")[7];
 }
 
+async function getAllTeamObjects() {
+  const response = await fetch("https://www.espn.com/nba/teams");
+  const html = await response.text();
+  const dom = new JSDOM(html);
+
+  const document = dom.window.document;
+
+  const teams = Array.from(
+    document.querySelectorAll("section.TeamLinks.flex.items-center > div.pl3 > a.AnchorLink")
+  );
+
+  let teamLinks = [];
+  for (let team of teams) {
+    const link = team.getAttribute("href");
+    const name = team.textContent;
+    teamLinks.push({link, name});
+  }
+
+  return teamLinks;
+
+}
+
 async function getAllTeams() {
   const data = await sql`
   SELECT * FROM teams
@@ -193,4 +215,6 @@ module.exports = {
   getAllPlayerLinksFromTeam,
   getPlayerName,
   getPlayerStats,
+  getEspnIdFromLink,
+  getAllTeamObjects
 };
