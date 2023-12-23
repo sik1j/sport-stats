@@ -1,6 +1,10 @@
 const { JSDOM } = require("jsdom");
 const { sql } = require("@vercel/postgres");
 
+function getEspnIdFromLink(link) {
+  return link.split("/")[7];
+}
+
 async function getAllTeams() {
   const data = await sql`
   SELECT * FROM teams
