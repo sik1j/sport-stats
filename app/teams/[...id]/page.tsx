@@ -11,6 +11,7 @@ export default async function Page({ params }: { params: { id: string[] } }) {
 
   const teamNameSlug = params.id.join("/");
   const playerObjs = await getPlayersFromTeamNameSlug(teamNameSlug);
+  console.log(playerObjs.map((playerObj) => playerObj.name));
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
