@@ -1,26 +1,25 @@
-import { getAllPlayerLinksFromTeam, getPlayerName } from "@/app/lib/actions";
+import { getAllPlayerLinksFromTeam, getPlayerName, getPlayersFromTeamNameSlug } from "@/app/lib/actions";
 import Link from "next/link";
 
 export default async function Page({ params }: { params: { id: string[] } }) {
-  function getPlayerESPNid(playerLink: string) {
-    return playerLink.split("/")[7];
+  function getPlayerLink(playerEspnId: string) {
+    return `https://www.espn.com/nba/player/_/id/${playerEspnId}`;
   }
 
-  const id = params.id;
-  const playerLinks = await getAllPlayerLinksFromTeam(
-    `https://www.espn.com/nba/team/_/name/${id.join("/")}`
-  );
+  const teamNameSlug = params.id.join("/");
+  const playerObjs = await getPlayersFromTeamNameSlug(teamNameSlug);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
       <h1>Players</h1>
       <ul>
-        {playerLinks.map(async (playerLink) => {
+        {playerObjs.map(async (playerObj) => {
+          const playerLink = getPlayerLink(playerObj.espn_id);
           const { firstName, lastName } = await getPlayerName(playerLink);
-          const id = getPlayerESPNid(playerLink);
+
           return (
             <li key={playerLink}>
-              <Link href={`/players/${id}`}>{`${firstName} ${lastName}`}</Link>
+              <Link href={`/players/${playerObj.espn_id}`}>{`${firstName} ${lastName}`}</Link>
             </li>
           );
         })}
