@@ -18,9 +18,9 @@ async function getAllTeamObjects() {
 
   let teamLinks = [];
   for (let team of teams) {
-    const link = team.getAttribute("href");
+    const relativeLink = team.getAttribute("href");
     const name = team.textContent;
-    teamLinks.push({link, name});
+    teamLinks.push({relativeLink, name});
   }
 
   return teamLinks;
