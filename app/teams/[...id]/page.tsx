@@ -3,6 +3,7 @@ import {
   getPlayersFromTeamNameSlug,
 } from "@/app/lib/actions";
 import Link from "next/link";
+import { performance } from "perf_hooks";
 
 export default async function Page({ params }: { params: { id: string[] } }) {
   function getPlayerLink(playerEspnId: string) {
@@ -10,8 +11,13 @@ export default async function Page({ params }: { params: { id: string[] } }) {
   }
 
   const teamNameSlug = params.id.join("/");
+
+  const start = performance.now();
   const playerObjs = await getPlayersFromTeamNameSlug(teamNameSlug);
-  console.log(playerObjs.map((playerObj) => playerObj.name));
+  const end = performance.now();
+  console.log(`getPlayersFromTeamNameSlug took ${end - start} milliseconds.`)
+
+  // console.log(playerObjs.map((playerObj) => playerObj.name));
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
