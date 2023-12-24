@@ -1,4 +1,7 @@
-import { getAllPlayerLinksFromTeam, getPlayerName, getPlayersFromTeamNameSlug } from "@/app/lib/actions";
+import {
+  getPlayerName,
+  getPlayersFromTeamNameSlug,
+} from "@/app/lib/actions";
 import Link from "next/link";
 
 export default async function Page({ params }: { params: { id: string[] } }) {
@@ -19,7 +22,9 @@ export default async function Page({ params }: { params: { id: string[] } }) {
 
           return (
             <li key={playerLink}>
-              <Link href={`/players/${playerObj.espn_id}`}>{`${firstName} ${lastName}`}</Link>
+              <Link
+                href={`/players/${playerObj.espn_id}`}
+              >{`${firstName} ${lastName}`}</Link>
             </li>
           );
         })}
