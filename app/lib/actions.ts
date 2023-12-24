@@ -2,8 +2,23 @@
 
 import { JSDOM } from "jsdom";
 import { sql } from "@vercel/postgres";
-import { Team } from "./definitions";
+import { Team, Player } from "./definitions";
 import { unstable_noStore as noStore } from "next/cache";
+
+export async function getPlayersFromTeamNameSlug(teamNameSlug: string) {
+  noStore();
+
+  const teamLink = `https://www.espn.com/nba/team/_/name/${teamNameSlug}`;
+
+  const data = await sql<Player>`
+    SELECT players.*
+    FROM players
+    JOIN teams
+    ON players.team_id = teams.id
+    WHERE teams.link = ${teamLink}
+  `;
+  return data.rows;
+}
 
 export async function getAllTeams() {
   noStore();
