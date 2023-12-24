@@ -5,7 +5,7 @@ import { Team } from "../lib/definitions";
 export default async function Teams() {
   const teams = await getAllTeams();
   function getTeamIdentifier(team: Team) {
-    return team.link.split("=")[1];
+    return team.link.split("/").slice(7,9).join('/');
   }
 
   return (
