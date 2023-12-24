@@ -6,7 +6,7 @@ import { Team, Player } from "./definitions";
 import { unstable_noStore as noStore } from "next/cache";
 
 export async function getPlayersFromTeamNameSlug(teamNameSlug: string) {
-  noStore();
+  // noStore();
 
   const teamLink = `https://www.espn.com/nba/team/_/name/${teamNameSlug}`;
 
@@ -21,7 +21,7 @@ export async function getPlayersFromTeamNameSlug(teamNameSlug: string) {
 }
 
 export async function getAllTeams() {
-  noStore();
+  // noStore();
 
   const data = await sql<Team>`
     SELECT * FROM teams
@@ -106,7 +106,7 @@ export async function getPlayerStats(playerPageLink: string) {
     return { firstName, lastName };
   }
 
-  noStore();
+  // noStore();
 
   let playerGameStatsArr = [];
 
