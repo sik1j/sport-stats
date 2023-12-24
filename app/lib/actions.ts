@@ -30,6 +30,8 @@ export async function getAllTeams() {
   return data.rows;
 }
 
+// CONVERT all data functions to use the database eventually
+
 export async function getAllPlayers() {
   try {
     let playersPerTeam = [{}] as [{ teamName: string; teamPlayers: string[] }];
