@@ -37,7 +37,9 @@ export async function getAllPlayers() {
   }
 }
 
+// Takes team link FROM TEAMS TABLE and returns array of player links
 export async function getAllPlayerLinksFromTeam(teamLink: string) {
+  teamLink = teamLink.replace("team", "team/roster");
   const response = await fetch(teamLink);
   const html = await response.text();
   const dom = new JSDOM(html);

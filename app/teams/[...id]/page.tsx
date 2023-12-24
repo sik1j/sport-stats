@@ -8,7 +8,7 @@ export default async function Page({ params }: { params: { id: string[] } }) {
 
   const id = params.id;
   const playerLinks = await getAllPlayerLinksFromTeam(
-    `https://www.espn.com/nba/team/roster/_/name/${id.join("/")}`
+    `https://www.espn.com/nba/team/_/name/${id.join("/")}`
   );
 
   return (
