@@ -1,9 +1,19 @@
 import {
   getPlayerName,
   getPlayersFromTeamNameSlug,
+  getAllTeams
 } from "@/app/lib/actions";
+import { getTeamIdentifierFromTeamLink } from "@/app/lib/utility";
 import Link from "next/link";
 import { performance } from "perf_hooks";
+
+export async function generateStaticParams() {
+  const teams = await getAllTeams();
+
+  return teams.map((team) => ({
+    id: getTeamIdentifierFromTeamLink(team.link).split("/"),
+  }));
+}
 
 export default async function Page({ params }: { params: { id: string[] } }) {
   function getPlayerLink(playerEspnId: string) {
@@ -23,6 +33,7 @@ export default async function Page({ params }: { params: { id: string[] } }) {
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
       <h1>Players</h1>
       <ul>
+        {/* Players list goes here. */}
         {playerObjs.map(async (playerObj) => {
           const playerLink = getPlayerLink(playerObj.espn_id);
           const { firstName, lastName } = await getPlayerName(playerLink);
