@@ -1,4 +1,5 @@
 import { getAllTeams } from "@/app/lib/actions";
+import { getTeamIdentifierFromTeamLink } from "@/app/lib/utility";
 import Link from "next/link";
 import { Team } from "../lib/definitions";
 import { performance } from "perf_hooks";
@@ -10,11 +11,7 @@ export default async function Teams() {
 
   const end = performance.now();
 
-  console.log(`Teams took ${end - start} milliseconds to load`)
-
-  function getTeamIdentifier(team: Team) {
-    return team.link.split("/").slice(7,9).join('/');
-  }
+  console.log(`Took ${end - start} milliseconds to get all teams.`)
 
   return (
     <div>
@@ -22,7 +19,7 @@ export default async function Teams() {
       <ul>
         {teams.map((team) => (
           <li key={team.id}>
-            <Link href={`/teams/${getTeamIdentifier(team)}`}>{team.name}</Link>
+            <Link href={`/teams/${getTeamIdentifierFromTeamLink(team.link)}`}>{team.name}</Link>
           </li>
         ))}
       </ul>
