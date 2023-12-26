@@ -1,5 +1,41 @@
 const { JSDOM } = require("jsdom");
 const { sql } = require("@vercel/postgres");
+async function getAllGamesOnDate(date) {
+  const year = date.getFullYear();
+  // month+1 because months are 0 indexed
+  const month = (date.getMonth()+1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+
+  const response = await fetch(
+    `https://www.espn.com/nba/schedule/_/date/${year}${month}${day}`
+  );
+  // console.log(`https://www.espn.com/nba/schedule/_/date/${year}${month}${day}`);
+  // console.log(year, month, day);
+
+  const html = await response.text();
+  const dom = new JSDOM(html);
+  const document = dom.window.document;
+
+  const gamesSection = document.querySelector("div.event-schedule__season + div.mt3");
+  const firstSection = gamesSection.children[0];
+
+  const title = firstSection.querySelector('div.Table__Title');
+  // console.log(title.textContent);
+
+  if (firstSection.classList.contains('EmptyTable')) {
+    return [];
+  }
+
+  const table = document.querySelector('div.ResponsiveTable > div.flex > div.Table__ScrollerWrapper > div.Table__Scroller > table.Table > tbody');
+  const rows = Array.from(table.querySelectorAll('tr.Table__TR'));
+
+  return rows.map(row => {
+    const awayTeamCity = row.querySelector('span.Table__Team.away').textContent;
+    const homeTeamCity = row.querySelector('span.at + span.Table__Team').textContent;
+    return { awayTeamCity, homeTeamCity };
+  });
+
+}
 
 function getEspnIdFromLink(link) {
   return link.split("/")[7];
