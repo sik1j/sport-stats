@@ -4,8 +4,85 @@ const {
   getAllPlayerLinksFromTeam,
   getPlayerName,
   getEspnIdFromLink,
-  getAllTeamObjects
+  getAllTeamObjects,
+  getAllGamesOnDate,
+  getAllPlayers_DB,
+  getPlayerStats
 } = require("./actions.js");
+
+async function seedGames(client) {
+
+  function getTeamCity(teamName) {
+    if (teamName === "Portland Trail Blazers") return "Portland";
+    const words = teamName.split(" ");
+    return words.slice(0, words.length - 1).join(" ");
+  }
+
+  try {
+    await client.sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+    const createGamesTable = await client.sql`
+      CREATE TABLE IF NOT EXISTS games (
+        id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+        date DATE NOT NULL,
+        home_team_id UUID REFERENCES teams(id),
+        away_team_id UUID REFERENCES teams(id)
+      );
+    `;
+
+    console.log("Created table `games`");
+
+    // NBA regular non-preseason season starts Oct 24, 2023 till Apr 6, 2024
+
+    // Jan -> 0, Feb -> 1, Mar -> 2, Apr -> 3, ... Oct -> 9, Nov -> 10, Dec -> 11
+    const teams = await getAllTeams();
+
+    const startDate = new Date(2023, 9, 24);
+    const endDate = new Date(2024, 3, 14);
+
+    const allDates = [];
+    while (startDate <= endDate) {
+      allDates.push(new Date(startDate));
+      startDate.setDate(startDate.getDate() + 1);
+    }
+
+    const insertGames = await Promise.all(
+      allDates.map(async (date) => {
+        const games = await getAllGamesOnDate(date);
+
+        console.log(`Inserting ${games.length} games for ${date.toDateString()}`);
+
+        return Promise.all(
+          games.map(async (game) => {
+            const homeTeam = teams.find(
+              (team) => getTeamCity(team.name) === game.homeTeamCity
+            );
+            const awayTeam = teams.find(
+              (team) => getTeamCity(team.name) === game.awayTeamCity
+            );
+
+            return client.sql`
+              INSERT INTO games (date, home_team_id, away_team_id)
+              VALUES (${date}, ${homeTeam.id}, ${awayTeam.id})
+            `;
+          })
+        );
+      })
+    );
+
+    const totalGames = insertGames.reduce((acc, curr) => acc + curr.length, 0);
+
+    console.log(`Inserted ${insertGames.flat().length} | ${totalGames}  games into table`);
+
+    return {
+      createGamesTable,
+      insertGames
+    }
+
+  } catch (error) {
+    console.error("Error seeding games table:", error);
+    throw error;
+  }
+}
 
 async function seedPlayers(client) {
   try {
