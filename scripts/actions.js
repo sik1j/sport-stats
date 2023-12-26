@@ -1,5 +1,6 @@
 const { JSDOM } = require("jsdom");
 const { sql } = require("@vercel/postgres");
+
 async function getAllGamesOnDate(date) {
   const year = date.getFullYear();
   // month+1 because months are 0 indexed
@@ -39,6 +40,14 @@ async function getAllGamesOnDate(date) {
 
 function getEspnIdFromLink(link) {
   return link.split("/")[7];
+}
+
+async function getAllPlayers_DB() {
+  const data = await sql`
+    SELECT * FROM players
+  `;  
+
+  return data;
 }
 
 async function getAllTeamObjects() {
@@ -215,6 +224,7 @@ async function getPlayerStats(playerPageLink) {
         opponent: opponent.textContent,
         result: result.textContent,
         score: score.textContent,
+        // properties above belong to each game rather than each player
         minutes: Number(minutes.textContent),
         fieldGoalsMade,
         fieldGoalsAttempted,
@@ -254,5 +264,8 @@ module.exports = {
   getPlayerName,
   getPlayerStats,
   getEspnIdFromLink,
-  getAllTeamObjects
+  getAllTeamObjects,
+  getAllGamesOnDate,
+  getAllPlayers_DB,
+  getPlayerStats
 };
