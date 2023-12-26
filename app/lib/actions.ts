@@ -5,6 +5,14 @@ import { sql } from "@vercel/postgres";
 import { Team, Player } from "./definitions";
 import { unstable_noStore as noStore } from "next/cache";
 
+export async function getAllPlayers_DB() {
+  const data = await sql<Player>`
+    SELECT * FROM players
+  `;  
+
+  return data;
+}
+
 export async function getPlayersFromTeamNameSlug(teamNameSlug: string) {
   // noStore();
 
