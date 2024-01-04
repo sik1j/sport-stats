@@ -28,7 +28,30 @@ export type PlayerGameStats = {
   points: number;
 };
 
-export async function getGamesFrom
+export async function getGameLinksFromTeamHomePageLink(
+  teamHomePageLink: string
+): Promise<(string | null | undefined)[]> {
+  const link = teamHomePageLink.replace("team", "team/schedule");
+
+  const response = await fetch(link);
+  const html = await response.text();
+  const dom = new JSDOM(html);
+  const document = dom.window.document;
+
+  const gamesArr = Array.from(document.querySelectorAll("tr.Table__TR"));
+  const regularSeasonGameLinks = gamesArr
+    .filter(
+      (game, ind) =>
+        game.querySelectorAll("td.Table__TD").length === 7 && ind !== 0
+    )
+    .map((game) =>
+      game
+        .querySelector("td:nth-child(3) > span:nth-child(2) > a:nth-child(1)")
+        ?.getAttribute("href")
+    );
+
+  return regularSeasonGameLinks;
+}
 
 /**
  * Retrieves player stats from a game of given ESPN game ID.
