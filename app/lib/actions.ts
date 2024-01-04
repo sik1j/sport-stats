@@ -2,8 +2,35 @@
 
 import { JSDOM } from "jsdom";
 import { sql } from "@vercel/postgres";
-import { Team, Player } from "./definitions";
+import { Team, Player, Game } from "./definitions";
 import { unstable_noStore as noStore } from "next/cache";
+
+export async function getGameFromGameData_DB(date: string, playerTeam: string, opponentTeam: string) {
+  // date is in format "DAY MM/DD"
+  // MM in [9,11] is in 2023, else 2024
+  const month = Number(date.split('/')[0].split(" ")[1]) - 1;
+  const day = Number(date.split('/')[1]);
+  let year: number;
+  if ([9,10,11].find(elem => elem == month)) {
+    year = 2023;
+  } else {
+    year = 2024;
+  }
+
+  const gameDate = new Date(year, month, day);
+
+  const gameDateString = `${gameDate.getFullYear()}-${String(gameDate.getMonth() + 1).padStart(2, '0')}-${String(gameDate.getDate()).padStart(2, '0')}`;
+
+
+  const data = await sql<Game>`
+    SELECT *
+    FROM games
+    WHERE date = ${gameDateString}
+  `;
+
+
+  return data;
+}
 
 export async function getAllPlayers_DB() {
   const data = await sql<Player>`
@@ -168,6 +195,9 @@ export async function getPlayerStats(playerPageLink: string) {
         points,
       ] = columns;
 
+      let homeOrAway = opponentElement.querySelector("span > span")!.textContent;
+      let isHome = homeOrAway == 'vs' ? true : false;
+
       let [_, opponent] = opponentElement.querySelectorAll("a.AnchorLink");
       let [result, score] = resultElement.querySelectorAll(".ResultCell, span");
 
@@ -186,6 +216,8 @@ export async function getPlayerStats(playerPageLink: string) {
         opponent: opponent.textContent!,
         result: result.textContent!,
         score: score.textContent!,
+        isHome,
+        // properties above belong to each game rather than each player
         minutes: Number(minutes.textContent!),
         fieldGoalsMade,
         fieldGoalsAttempted,
