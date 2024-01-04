@@ -44,8 +44,7 @@ export async function getPlayerStatsFromEspnGameId(espnGameId: number) {
   const dom = new JSDOM(html);
   const document = dom.window.document;
 
-  let playersOnTeamArr: { name: string; ind: number }[][] =
-    [];
+  let playersOnTeamArr: { name: string; ind: number }[][] = [];
 
   for (let i = 0; i < 2; i++) {
     playersOnTeamArr.push(
@@ -102,7 +101,7 @@ export async function getPlayerStatsFromEspnGameId(espnGameId: number) {
   //       playersOnTeamArr[0].find(({ ind: j }) => j === ind) !== undefined
   //   )
 
-  const joined =  playersOnTeamArr.map((team, i) => {
+  const joined = playersOnTeamArr.map((team, i) => {
     return team.map(({ name }, j) => {
       const [
         minutes,
@@ -147,7 +146,7 @@ export async function getPlayerStatsFromEspnGameId(espnGameId: number) {
     });
   });
 
-  return {team1: joined[0], team2: joined[1]};
+  return { team1: joined[0], team2: joined[1] };
 }
 
 /**
