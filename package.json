@@ -2,12 +2,15 @@
   "name": "sport-stats",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "seed": "node -r dotenv/config ./scripts/seed.js",
+    "seedts": "npx tsx -r dotenv/config ./scripts/seed.ts",
+    "actionststest": "npx tsx -r dotenv/config ./scripts/actionsts.test.ts",
     "data": "node -r dotenv/config ./app/data.ts"
   },
   "dependencies": {
@@ -20,6 +23,7 @@
     "react-dom": "^18"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.11",
     "@types/jsdom": "^21.1.6",
     "@types/node": "^20",
     "@types/react": "^18",
@@ -28,8 +32,10 @@
     "dotenv": "^16.3.1",
     "eslint": "^8",
     "eslint-config-next": "14.0.4",
+    "jest": "^29.7.0",
     "postcss": "^8",
     "tailwindcss": "^3.3.0",
+    "tsx": "^4.7.0",
     "typescript": "^5"
   }
 }
