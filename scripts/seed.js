@@ -7,8 +7,10 @@ const {
   getAllTeamObjects,
   getAllGamesOnDate,
   getAllPlayers_DB,
-  getPlayerStats
+  getPlayerStats,
+  getGameFromGameData_DB,
 } = require("./actions.js");
+const { convertMMDDtoDate, getTeamNameFromAcronym } = require("./utility.js");
 
 async function seedGames(client) {
 
@@ -80,6 +82,71 @@ async function seedGames(client) {
 
   } catch (error) {
     console.error("Error seeding games table:", error);
+    throw error;
+  }
+}
+
+async function seedPlayerStats(client) {
+  try {
+    await client.sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+
+    const createTable = await client.sql`
+      CREATE TABLE IF NOT EXISTS player_stats (
+        id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+        player_id UUID REFERENCES players(id),
+        game_id UUID REFERENCES games(id),
+        minutes INT NOT NULL,
+        points INT NOT NULL,
+        assists INT NOT NULL,
+        rebounds INT NOT NULL,
+        blocks INT NOT NULL,
+        steals INT NOT NULL,
+        turnovers INT NOT NULL,
+        fouls INT NOT NULL,
+        field_goals_made INT NOT NULL,
+        field_goals_attempted INT NOT NULL,
+        field_goal_percentage DECIMAL,
+        three_pointers_made INT NOT NULL,
+        three_pointers_attempted INT NOT NULL,
+        three_point_percentage DECIMAL,
+        free_throws_made INT NOT NULL,
+        free_throws_attempted INT NOT NULL,
+        free_throw_percentage DECIMAL
+      );
+    `;
+
+    console.log("Created table `player_stats`");
+    
+    const allPlayers = await getAllPlayers_DB();      
+
+    const insertAllPlayerStats = await Promise.all(
+      allPlayers.rows.map(async (player) => {
+        console.log(`Inserting player stats for ${player.name}`);
+        const playerStats = await getPlayerStats(`https://www.espn.com/nba/player/_/id/${player.espn_id}`);
+        return Promise.all(
+          playerStats.playerGameStatsArr
+          // Keep regular season games. Note: gameStats.date is in format 'Thu 10/24'
+          .filter(gameStats => convertMMDDtoDate(gameStats.date.split(' ')[1]) >= new Date(2023, 9, 24))
+          // insert regular season stats into table
+          .map(async (gameStats) => {
+            const game = await getGameFromGameData_DB(gameStats.date, player.team_id, getTeamNameFromAcronym(gameStats.opponent), gameStats.isHome);
+            if (game.rows.length === 0) {
+              console.log(gameStats.date, player.team_id, getTeamNameFromAcronym(gameStats.opponent), gameStats.isHome);
+              console.log(game.rows);
+              throw new Error('Game not found');
+            }
+            // const gameId = game.rows[0].id;
+            // return client.sql`
+            //   INSERT INTO player_stats (player_id, game_id, minutes, points, assists, rebounds, blocks, steals, turnovers, fouls, field_goals_made, field_goals_attempted, field_goal_percentage, three_pointers_made, three_pointers_attempted, three_point_percentage, free_throws_made, free_throws_attempted, free_throw_percentage)
+            //   VALUES (${player.id}, ${gameId}, ${gameStats.minutes}, ${gameStats.points}, ${gameStats.assists}, ${gameStats.rebounds}, ${gameStats.blocks}, ${gameStats.steals}, ${gameStats.turnovers}, ${gameStats.fouls}, ${gameStats.fieldGoalsMade}, ${gameStats.fieldGoalsAttempted}, ${gameStats.fieldGoalPercentage}, ${gameStats.threePointersMade}, ${gameStats.threePointersAttempted}, ${gameStats.threePointPercentage}, ${gameStats.freeThrowsMade}, ${gameStats.freeThrowsAttempted}, ${gameStats.freeThrowPercentage})
+            // `;
+          })
+        );
+      })
+    );
+
+  } catch (error) {
+    console.error("Error seeding player_stats table:", error);
     throw error;
   }
 }
@@ -188,6 +255,15 @@ async function main() {
   // await seedTeams(client);
 
   // await seedPlayers(client);
+
+  // await seedGames(client);
+
+  // await seedPlayerStats(client);
+  console.log(await getPlayerStats('https://www.espn.com/nba/player/_/id/4684806'));
+
+  // const games = await getGameFromGameData_DB('Thu 10/24');
+  // console.log(games.rows);
+  // await getGameIdFromGameData_DB('Sum 1/3');
 
   await client.end();
 }

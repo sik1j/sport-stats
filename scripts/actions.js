@@ -1,5 +1,40 @@
 const { JSDOM } = require("jsdom");
 const { sql } = require("@vercel/postgres");
+const { convertMMDDtoDate } = require("./utility");
+
+async function getGameFromGameData_DB(date, playerTeamId, opponentTeamName, isPlayerTeamHome) {
+  // date is in format "DAY MM/DD"
+  // MM in [9,11] is in 2023, else 2024
+  const gameDate = convertMMDDtoDate(date.split(' ')[1]);
+
+  const gameDateString = `${gameDate.getFullYear()}-${String(gameDate.getMonth() + 1).padStart(2, '0')}-${String(gameDate.getDate()).padStart(2, '0')}`;
+
+  let data;
+
+  if (isPlayerTeamHome) {
+    data = await sql`
+      SELECT games.id, games.date, home_team.name AS home_team_name, away_team.name AS away_team_name 
+      FROM games
+      JOIN teams AS home_team ON home_team.id = games.home_team_id
+      JOIN teams AS away_team ON away_team.id = games.away_team_id
+      WHERE games.date = ${gameDateString}
+      AND home_team.id =  ${playerTeamId}
+      AND away_team.name = ${opponentTeamName}
+    `;
+  } else {
+    data = await sql`
+      SELECT games.id, games.date, home_team.name AS home_team_name, away_team.name AS away_team_name 
+      FROM games
+      JOIN teams AS home_team ON home_team.id = games.home_team_id
+      JOIN teams AS away_team ON away_team.id = games.away_team_id
+      WHERE games.date = ${gameDateString}
+      AND away_team.id =  ${playerTeamId}
+      AND home_team.name = ${opponentTeamName}
+    `;
+  }
+
+  return data;
+}
 
 async function getAllGamesOnDate(date) {
   const year = date.getFullYear();
@@ -144,7 +179,8 @@ async function getPlayerName(playerPageLink) {
 }
 
 async function getPlayerStats(playerPageLink) {
-  async function getPlayerName(document) {
+  try {
+  function getPlayerName(document) {
     // should never be null right?
     const firstName = document.querySelector("h1.PlayerHeader__Name > span")
       .textContent;
@@ -206,6 +242,9 @@ async function getPlayerStats(playerPageLink) {
         points,
       ] = columns;
 
+      let homeOrAway = opponentElement.querySelector("span > span").textContent;
+      let isHome = homeOrAway == 'vs' ? true : false;
+
       let [_, opponent] = opponentElement.querySelectorAll("a.AnchorLink");
       let [result, score] = resultElement.querySelectorAll(".ResultCell, span");
 
@@ -224,6 +263,7 @@ async function getPlayerStats(playerPageLink) {
         opponent: opponent.textContent,
         result: result.textContent,
         score: score.textContent,
+        isHome,
         // properties above belong to each game rather than each player
         minutes: Number(minutes.textContent),
         fieldGoalsMade,
@@ -255,6 +295,11 @@ async function getPlayerStats(playerPageLink) {
     )
     .textContent.split("#")[0];
   return { firstName, lastName, team, playerGameStatsArr };
+    }
+    catch (error) {
+      console.error(error);
+      throw new Error(`Error getting player stats for ${playerPageLink}`);
+    }
 }
 
 module.exports = {
@@ -267,5 +312,6 @@ module.exports = {
   getAllTeamObjects,
   getAllGamesOnDate,
   getAllPlayers_DB,
-  getPlayerStats
+  getPlayerStats,
+  getGameFromGameData_DB,
 };
