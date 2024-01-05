@@ -7,6 +7,7 @@ import {
 } from "./actionsts";
 import { JSDOM } from "jsdom";
 import { sql } from "@vercel/postgres";
+import { Game } from "./definitions";
 
 async function main() {
   //   // test if name matches the name in the database
@@ -17,9 +18,77 @@ async function main() {
   // await test();
   // await getGameLinksTest();
   // await getGameDataTest();
+  await getPlayerStatsTest();
 }
 
 main();
+
+async function getPlayerStatsTest() {
+  //   const gameId = 401584708;
+  //   const { team1, team2 } = await getPlayerStatsFromEspnGameId(gameId);
+  //   console.log(team1, team2);
+  // }
+  const gameIds = (
+    await sql<{ espn_id: number }>`
+    SELECT espn_id FROM games
+  `
+  ).rows.map((row) => row.espn_id);
+
+  let errorCount = 0;
+  console.log(`Testing ${gameIds.length} games...`);
+  await withDelay(
+    0,
+    async (gameId) => {
+      const isAllDataDefined = (team: any[]) => {
+        return team.every((player) => {
+          const playerBase =
+            player.lowerCaseName !== null && player.espnId !== null;
+          if (player.stats === null) {
+            return playerBase;
+          } else {
+            return (
+              playerBase &&
+              player.points !== null &&
+              player.rebounds !== null &&
+              player.assists !== null &&
+              player.steals !== null &&
+              player.blocks !== null &&
+              player.turnovers !== null &&
+              player.fieldGoals !== null &&
+              player.threePointers !== null &&
+              player.freeThrows !== null &&
+              player.min !== null &&
+              player.fouls !== null &&
+              player.plusMinus !== null
+            );
+          }
+        });
+      };
+
+      try {
+        const { team1, team2 } = await getPlayerStatsFromEspnGameId(gameId);
+        
+        if (!isAllDataDefined(team1) || !isAllDataDefined(team2)) {
+          errorCount++;
+        throw new Error("Not all data is defined");
+        }
+        
+        console.log("got data for game id", gameId);
+      } catch (e) {
+        errorCount++;
+        console.log("error with game id", gameId, `error: ${e}`);
+      }
+      console.log("=".repeat(50));
+    },
+    gameIds
+  );
+
+  if (errorCount === 0) {
+    console.log("All tests passed!");
+  } else {
+    console.log(`${errorCount} tests failed.`);
+  }
+}
 
 async function getGameDataTest() {
   const teamLinks = (await sql<{ link: string }>`SELECT link FROM teams`).rows;
@@ -31,22 +100,42 @@ async function getGameDataTest() {
     let error = false;
     gameLinks.forEach(async (gameLink) => {
       const espnGameId = parseInt(gameLink!.split("/")[7]);
-      const {awayTeamName, awayTeamScore, date, espnGameId: gameId, homeTeamName, homeTeamScore} = await getGameDataFromGameId(espnGameId);
+      const {
+        awayTeamName,
+        awayTeamScore,
+        date,
+        espnGameId: gameId,
+        homeTeamName,
+        homeTeamScore,
+      } = await getGameDataFromGameId(espnGameId);
 
-      if (!awayTeamName || !awayTeamScore || !date || !gameId || !homeTeamName || !homeTeamScore) {
+      if (
+        !awayTeamName ||
+        !awayTeamScore ||
+        !date ||
+        !gameId ||
+        !homeTeamName ||
+        !homeTeamScore
+      ) {
         console.log("error with gameLink", gameLink, "team link", link);
-        console.log({awayTeamName, awayTeamScore, date, espnGameId: gameId, homeTeamName, homeTeamScore});
+        console.log({
+          awayTeamName,
+          awayTeamScore,
+          date,
+          espnGameId: gameId,
+          homeTeamName,
+          homeTeamScore,
+        });
         error = true;
       }
-    })
+    });
 
     if (error) {
-      console.error("error with gameLinks", gameLinks, 'team link', link);  
+      console.error("error with gameLinks", gameLinks, "team link", link);
     } else {
       console.log(`everything is well-defined for ${link}`);
     }
-    console.log('='.repeat(50));
-    
+    console.log("=".repeat(50));
   });
 }
 
@@ -64,10 +153,10 @@ async function getGameLinksTest() {
     });
 
     if (error) {
-      console.error("error with gameLinks", gameLinks, 'team link', link);
+      console.error("error with gameLinks", gameLinks, "team link", link);
     } else {
       console.log(`everything is well-defined for ${link}`);
-      console.log('='.repeat(50));
+      console.log("=".repeat(50));
     }
   });
 }
@@ -77,44 +166,26 @@ async function test() {
   console.log(data.team2);
 }
 
-async function noStatTest() {
-  console.log("Fetching all players from the database...");
-  const allPlayers = await getAllPlayers_DB();
+/**
+ * Executes a function with a delay for each element in an array.
+ *
+ * @param index - The current index in the array.
+ * @param func - The function to be executed for each element.
+ * @param inArr - The input array.
+ * @param outArr - The output array.
+ * @returns A promise that resolves to the output array.
+ */
+async function withDelay<T, U>(
+  index: number,
+  func: (arg: T) => Promise<U>,
+  inArr: T[],
+  outArr: U[] = []
+) {
+  if (index >= inArr.length) return outArr;
 
-  console.log("Fetching player stats from ESPN...");
-  allPlayers.rows.forEach(async (player) => {
-    const playerStats = await getPlayerStatsFromEspnId(player.espn_id);
-    const fullName = `${playerStats.firstName} ${playerStats.lastName}`;
-
-    if (playerStats.playerGameStatsArr.length == 0) {
-      console.log(`No stats for ${fullName}`);
-    }
-  });
-}
-
-async function nameTest() {
-  console.log("Fetching all players from the database...");
-  const allPlayers = await getAllPlayers_DB();
-
-  // const link = 'https://www.espn.com/nba/player/_/id/3102530';
-  // const playerStats = await getPlayerStats(link);
-  // console.log(playerStats);
-  console.log("Fetching player stats from ESPN...");
-  let misMatchCount = 0;
-  allPlayers.rows.forEach(async (player) => {
-    try {
-      const playerStats = await getPlayerStatsFromEspnId(player.espn_id);
-      const fullName = `${playerStats.firstName} ${playerStats.lastName}`;
-      if (fullName != player.name) {
-        console.log(`Name MISMATCH: ${fullName} vs ${player.name}`);
-        misMatchCount++;
-      } else {
-        console.log(`Name match: ${fullName}`);
-      }
-    } catch (e) {
-      console.log(`Error: ${e}, ${player.name}`);
-    }
-  });
-
-  console.log(`Total mismatch: ${misMatchCount}`);
+  console.log(`Running with ${index},`, inArr[index], "...");
+  const result = await func(inArr[index]);
+  outArr.push(result);
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  return withDelay(index + 1, func, inArr, outArr);
 }
