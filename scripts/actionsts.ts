@@ -28,6 +28,57 @@ export type PlayerGameStats = {
   points: number;
 };
 
+export async function getGameDataFromGameId(espnGameId: Number) {
+  const link = `https://www.espn.com/nba/game/_/gameId/${espnGameId}`;
+  const response = await fetch(link);
+  const html = await response.text();
+  const dom = new JSDOM(html);
+  const document = dom.window.document;
+
+  const awayTeamName = document.querySelector(
+    "div.Gamestrip__Team:nth-child(1) > div:nth-child(2) > div:nth-child(1) > div:nth-child(1) > div:nth-child(1) > div:nth-child(1) > a:nth-child(1) > h2:nth-child(1)"
+  )?.textContent;
+  const homeTeamName = document.querySelector(
+    "div.Gamestrip__Team:nth-child(3) > div:nth-child(2) > div:nth-child(1) > div:nth-child(1) > div:nth-child(1) > div:nth-child(1) > a:nth-child(1) > h2:nth-child(1)"
+  )?.textContent;
+  // console.log(awayTeamName, homeTeamName);
+
+  const dateString = document
+    .querySelector(".GameInfo__Meta > span:nth-child(1)")
+    ?.textContent?.split(",")
+    .slice(1)
+    .join("");
+  const date = new Date(dateString!);
+  // console.log(dateString, date);
+
+  const awayTeamScore = Number(
+    document
+      .querySelector(
+        "div.Gamestrip__Team:nth-child(1) > div:nth-child(2) > div:nth-child(2) > div:nth-child(1)"
+      )
+      ?.innerHTML.split("<")[0]
+  );
+  const homeTeamScore = Number(
+    document.querySelector(
+      "div.Gamestrip__Team:nth-child(3) > div:nth-child(2) > div:nth-child(2) > div:nth-child(1)"
+    )?.textContent
+  );
+
+  return {
+    date,
+    homeTeamScore,
+    awayTeamScore,
+    homeTeamName,
+    awayTeamName,
+    espnGameId,
+  };
+}
+
+/**
+ * Retrieves the game links from the team's home page link.
+ * @param teamHomePageLink - The link to the team's home page.
+ * @returns A promise that resolves to an array of game links, or null/undefined values.
+ */
 export async function getGameLinksFromTeamHomePageLink(
   teamHomePageLink: string
 ): Promise<(string | null | undefined)[]> {
