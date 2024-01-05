@@ -2,7 +2,8 @@ import {
   getPlayerStatsFromEspnId,
   getAllPlayers_DB,
   getPlayerStatsFromEspnGameId,
-  getGameLinksFromTeamHomePageLink
+  getGameLinksFromTeamHomePageLink,
+  getGameDataFromGameId
 } from "./actionsts";
 import { JSDOM } from "jsdom";
 
@@ -16,10 +17,19 @@ async function main() {
   // test
   // await test();
 
-  await getGameLinksTest();
+  // await getGameLinksTest();
+
+  await getGameDataTest();
 }
 
 main();
+
+async function getGameDataTest() {
+  let gameData = await getGameDataFromGameId(401584693);
+  console.log(gameData);
+  gameData = await getGameDataFromGameId(401584701);
+  console.log(gameData);
+}
 
 async function getGameLinksTest() {
   const link = 'https://www.espn.com/nba/team/_/name/bos/boston-celtics';
