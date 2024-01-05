@@ -57,11 +57,9 @@ export async function getGameDataFromGameId(espnGameId: number) {
   // console.log(dateString, date);
 
   const awayTeamScore = parseInt(
-    document
-      .querySelector(
-        "div.Gamestrip__Team:nth-child(1) > div:nth-child(2) > div:nth-child(2) > div:nth-child(1)"
-      )!
-      .textContent!
+    document.querySelector(
+      "div.Gamestrip__Team:nth-child(1) > div:nth-child(2) > div:nth-child(2) > div:nth-child(1)"
+    )!.textContent!
   );
   const homeTeamScore = parseInt(
     document.querySelector(
@@ -96,13 +94,10 @@ export async function getGameLinksFromTeamHomePageLink(
 
   const gamesArr = Array.from(document.querySelectorAll("tr.Table__TR"));
   const regularSeasonGameLinks = gamesArr
-    .filter(
-      (game, ind) =>
-        {
-          const gameColumns = game.querySelectorAll("td.Table__TD");
-          return gameColumns.length === 7 && gameColumns[0].textContent !== "DATE";
-        }
-    )
+    .filter((game, ind) => {
+      const gameColumns = game.querySelectorAll("td.Table__TD");
+      return gameColumns.length === 7 && gameColumns[0].textContent !== "DATE";
+    })
     .map((game) =>
       game
         .querySelector("td:nth-child(3) > span:nth-child(2) > a:nth-child(1)")
@@ -118,6 +113,67 @@ export async function getGameLinksFromTeamHomePageLink(
  * @returns An array of player stats. stats === null if the player did not play.
  */
 export async function getPlayerStatsFromEspnGameId(espnGameId: number) {
+  const getPlayerNames = (teamPlayerTable: NodeListOf<Element>) => {
+    return Array.from(teamPlayerTable).map((player) => {
+      const link = player.getAttribute("href");
+
+      let espnId;
+      let lowerCaseName;
+      if (link === null) {
+        espnId = null;
+        lowerCaseName = null;
+      } else {
+        espnId = parseInt(link.split("/")[7]);
+        lowerCaseName = link.split("/")[8].replaceAll("-", " ");
+      }
+
+      return { lowerCaseName, espnId };
+    });
+  };
+
+  const getPlayerStats = (teamStatTable: NodeListOf<Element>) => {
+    return Array.from(teamStatTable)
+      .map((player) => {
+        const columns = player.querySelectorAll("td");
+
+        if (columns[0]?.textContent === "MIN" || columns[0]?.textContent === '') return null;
+        if (columns.length === 1) return 'DNP';
+
+        const [
+          min,
+          fieldGoals,
+          threePointers,
+          freeThrows,
+          _,
+          __,
+          rebounds,
+          assists,
+          steals,
+          blocks,
+          turnovers,
+          fouls,
+          plusMinus,
+          points,
+        ] = Array.from(columns).map((td) => td.textContent);
+
+        return {
+          min: min === null ? null : parseInt(min),
+          fieldGoals,
+          threePointers,
+          freeThrows,
+          rebounds: rebounds === null ? null : parseInt(rebounds),
+          assists: assists === null ? null : parseInt(assists),
+          steals: steals === null ? null : parseInt(steals),
+          blocks: blocks === null ? null : parseInt(blocks),
+          turnovers: turnovers === null ? null : parseInt(turnovers),
+          fouls: fouls === null ? null : parseInt(fouls),
+          plusMinus: plusMinus === null ? null : parseInt(plusMinus),
+          points: points === null ? null : parseInt(points),
+        };
+      })
+      .filter((player) => player !== null);
+  };
+
   const statPageLink = `https://www.espn.com/nba/boxscore/_/gameId/${espnGameId}`;
 
   const response = await fetch(statPageLink);
@@ -126,109 +182,36 @@ export async function getPlayerStatsFromEspnGameId(espnGameId: number) {
   const dom = new JSDOM(html);
   const document = dom.window.document;
 
-  let playersOnTeamArr: { name: string; ind: number }[][] = [];
+  const team1PlayerTable = document.querySelectorAll(
+    ".Boxscore__ResponsiveWrapper > div:nth-child(1) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1) > table:nth-child(1) > tbody:nth-child(3) > tr > td:nth-child(1) > div:nth-child(1) > a:nth-child(1)"
+  );
+  const team2PlayerTable = document.querySelectorAll(
+    ".Boxscore__ResponsiveWrapper > div:nth-child(2) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1) > table:nth-child(1) > tbody:nth-child(3) > tr > td:nth-child(1) > div:nth-child(1) > a:nth-child(1)"
+  );
 
-  for (let i = 0; i < 2; i++) {
-    playersOnTeamArr.push(
-      Array.from(
-        document.querySelectorAll(
-          `.Boxscore__ResponsiveWrapper > div:nth-child(${
-            i + 1
-          }) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1) > table:nth-child(1) > tbody:nth-child(3) > tr > td:nth-child(1) > div:nth-child(1)`
-        )
-      )
-        .map((playerElem, ind) => ({ node: playerElem, ind }))
-        .filter(({ node }) => node.querySelector("a") !== null)
-        .map(({ node, ind }) => ({
-          name: node.querySelector("a")!.textContent!,
-          ind,
-        }))
-    );
-  }
+  const team1StatTable = document.querySelectorAll(
+    ".Boxscore__ResponsiveWrapper > div:nth-child(1) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1) > div:nth-child(2) > div:nth-child(2) > table:nth-child(1) > tbody:nth-child(3) > tr"
+  );
+  const team2StatTable = document.querySelectorAll(
+    ".Boxscore__ResponsiveWrapper > div:nth-child(2) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1) > div:nth-child(2) > div:nth-child(2) > table:nth-child(1) > tbody:nth-child(3) > tr"
+  );
 
-  let playersOnTeamStatsArr: (string | null)[][][] = [];
-  for (let i = 0; i < 2; i++) {
-    playersOnTeamStatsArr.push(
-      Array.from(
-        document.querySelectorAll(
-          `.Boxscore__ResponsiveWrapper > div:nth-child(${
-            i + 1
-          }) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1) > div:nth-child(2) > div:nth-child(2) > table:nth-child(1) > tbody:nth-child(3) > tr`
-        )
-      )
-        .map((node) => {
-          return Array.from(node.querySelectorAll("td")).map(
-            (node) => node.textContent
-          );
-        })
-        .filter(
-          (_node, ind) =>
-            playersOnTeamArr[0].find(({ ind: j }) => j === ind) !== undefined
-        )
-    );
-  }
+  const team1PlayerNames = getPlayerNames(team1PlayerTable);
+  const team1Stats = getPlayerStats(team1StatTable);
+  
+  const team2PlayerNames = getPlayerNames(team2PlayerTable);
+  const team2Stats = getPlayerStats(team2StatTable);
 
-  // let arr = Array.from(
-  //   document.querySelectorAll(
-  //     `.Boxscore__ResponsiveWrapper > div:nth-child(1) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1) > div:nth-child(2) > div:nth-child(2) > table:nth-child(1) > tbody:nth-child(3) > tr`
-  //   )
-  // )
-  //   .map((node) => {
-  //     return Array.from(node.querySelectorAll("td")).map(
-  //       (node) => node.textContent
-  //     );
-  //   })
-  //   .filter(
-  //     (_node, ind) =>
-  //       playersOnTeamArr[0].find(({ ind: j }) => j === ind) !== undefined
-  //   )
-
-  const joined = playersOnTeamArr.map((team, i) => {
-    return team.map(({ name }, j) => {
-      const [
-        minutes,
-        fieldGoals,
-        threePointers,
-        freeThrows,
-        _oReb,
-        _dReb,
-        rebounds,
-        assists,
-        steals,
-        blocks,
-        turnovers,
-        fouls,
-        plusMinus,
-        points,
-      ] = playersOnTeamStatsArr[i][j];
-      if (isNaN(Number(minutes))) {
-        return { name, stats: null };
-      }
-
-      return {
-        name,
-        stats: {
-          minutes: Number(minutes),
-          fieldGoalsMade: Number(fieldGoals!.split("-")[0]),
-          fieldGoalsAttempted: Number(fieldGoals!.split("-")[1]),
-          threePointersMade: Number(threePointers!.split("-")[0]),
-          threePointersAttempted: Number(threePointers!.split("-")[1]),
-          freeThrowsMade: Number(freeThrows!.split("-")[0]),
-          freeThrowsAttempted: Number(freeThrows!.split("-")[1]),
-          rebounds: Number(rebounds),
-          assists: Number(assists),
-          steals: Number(steals),
-          blocks: Number(blocks),
-          turnovers: Number(turnovers),
-          fouls: Number(fouls),
-          plusMinus: Number(plusMinus),
-          points: Number(points),
-        },
-      };
-    });
-  });
-
-  return { team1: joined[0], team2: joined[1] };
+  return {
+    team1: team1Stats.map((stats, ind) => {
+      if (stats === 'DNP') return {...team1PlayerNames[ind], ...{stats: null}};
+      return {...team1PlayerNames[ind], ...stats};
+    }),
+    team2: team2Stats.map((stats, ind) => {
+      if (stats === 'DNP') return {...team2PlayerNames[ind], ...{stats: null}};
+      return {...team2PlayerNames[ind], ...stats};
+    })
+  };
 }
 
 /**
@@ -238,6 +221,14 @@ export async function getPlayerStatsFromEspnGameId(espnGameId: number) {
 export async function getAllPlayers_DB() {
   const data = await sql<Player>`
     SELECT * FROM players
+  `;
+
+  return data;
+}
+
+export async function getAllTeams_DB() {
+  const data = await sql<Team>`
+    SELECT * FROM teams
   `;
 
   return data;
