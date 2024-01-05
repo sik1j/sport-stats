@@ -28,6 +28,11 @@ export type PlayerGameStats = {
   points: number;
 };
 
+/**
+ * Retrieves game data from ESPN based on the provided game ID.
+ * @param espnGameId - The ESPN game ID.
+ * @returns An object containing the game data, including the date, scores, and team names.
+ */
 export async function getGameDataFromGameId(espnGameId: number) {
   const link = `https://www.espn.com/nba/game/_/gameId/${espnGameId}`;
   const response = await fetch(link);
