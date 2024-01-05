@@ -28,7 +28,7 @@ export type PlayerGameStats = {
   points: number;
 };
 
-export async function getGameDataFromGameId(espnGameId: Number) {
+export async function getGameDataFromGameId(espnGameId: number) {
   const link = `https://www.espn.com/nba/game/_/gameId/${espnGameId}`;
   const response = await fetch(link);
   const html = await response.text();
@@ -51,17 +51,17 @@ export async function getGameDataFromGameId(espnGameId: Number) {
   const date = new Date(dateString!);
   // console.log(dateString, date);
 
-  const awayTeamScore = Number(
+  const awayTeamScore = parseInt(
     document
       .querySelector(
         "div.Gamestrip__Team:nth-child(1) > div:nth-child(2) > div:nth-child(2) > div:nth-child(1)"
-      )
-      ?.innerHTML.split("<")[0]
+      )!
+      .textContent!
   );
-  const homeTeamScore = Number(
+  const homeTeamScore = parseInt(
     document.querySelector(
       "div.Gamestrip__Team:nth-child(3) > div:nth-child(2) > div:nth-child(2) > div:nth-child(1)"
-    )?.textContent
+    )!.textContent!
   );
 
   return {
@@ -93,7 +93,10 @@ export async function getGameLinksFromTeamHomePageLink(
   const regularSeasonGameLinks = gamesArr
     .filter(
       (game, ind) =>
-        game.querySelectorAll("td.Table__TD").length === 7 && ind !== 0
+        {
+          const gameColumns = game.querySelectorAll("td.Table__TD");
+          return gameColumns.length === 7 && gameColumns[0].textContent !== "DATE";
+        }
     )
     .map((game) =>
       game
