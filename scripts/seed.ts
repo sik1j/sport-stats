@@ -5,6 +5,7 @@ import {
   PlayerGameStats,
   getGameLinksFromTeamHomePageLink,
   getGameDataFromGameId,
+  getPlayerStatsFromEspnGameId
 } from "./actionsts";
 import { Player, Game, Team } from "./definitions";
 import { convertMMDDtoDate } from "./utilityts";
@@ -34,6 +35,21 @@ async function withDelay<T, U>(
   return withDelay(index + 1, func, inArr, outArr);
 }
 
+export async function seedPlayers() {
+  console.log("Fetching all players from the database...");
+  const players = await sql<Player>`
+    SELECT * FROM players
+  `;
+  console.log(`Got ${players.rows.length} players.`);
+
+
+
+}
+
+/**
+ * Seeds the games data by fetching game links, retrieving game data, and inserting the games into the database.
+ * @returns {Promise<void>} A promise that resolves when the seeding is complete.
+ */
 export async function seedGames() {
   try {
     console.log("Fetching all players from the database...");
