@@ -156,11 +156,23 @@ export async function getPlayerStatsFromEspnGameId(espnGameId: number) {
           points,
         ] = Array.from(columns).map((td) => td.textContent);
 
+        const extractMadeAndAttempted = (shotStat: string | null) => {
+          if (shotStat === null) return [null, null];
+          return shotStat.split("-").map((num) => parseInt(num));
+        }
+
+        const [fieldGoalsMade, fieldGoalsAttempted] = extractMadeAndAttempted(fieldGoals);
+        const [threePointersMade, threePointersAttempted] = extractMadeAndAttempted(threePointers);
+        const [freeThrowsMade, freeThrowsAttempted] = extractMadeAndAttempted(freeThrows);
+
         return {
           min: min === null ? null : parseInt(min),
-          fieldGoals,
-          threePointers,
-          freeThrows,
+          fieldGoalsMade,
+          fieldGoalsAttempted,
+          threePointersMade,
+          threePointersAttempted,
+          freeThrowsMade,
+          freeThrowsAttempted,
           rebounds: rebounds === null ? null : parseInt(rebounds),
           assists: assists === null ? null : parseInt(assists),
           steals: steals === null ? null : parseInt(steals),
