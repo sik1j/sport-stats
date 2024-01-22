@@ -52,46 +52,7 @@ export async function seedPlayers() {
  */
 export async function seedGames() {
   try {
-    console.log("Fetching all players from the database...");
-    const allTeamLinks = (await sql<{ link: string }>`SELECT link FROM teams`)
-      .rows;
-    console.log(`Got ${allTeamLinks.length} team links.`);
-
-    // const testTeamLink = allTeamLinks[0];
-    // const testTeamGameLinks = await getGameLinksFromTeamHomePageLink(testTeamLink.link);
-    // const testTeamGamesData = await Promise.all(testTeamGameLinks.map(async (gameLink) => {
-    //   const espnGameId = parseInt(gameLink!.split("/")[7]);
-    //   const gameData = await getGameDataFromGameId(espnGameId);
-    //   return gameData;
-    // }));
-
-    // console.log(testTeamGamesData, testTeamGamesData.length);
-
-    console.log("Fetching all game links...");
-    // const allGameLinksArr = (
-    //   await Promise.all(
-    //     allTeamLinks.map(async ({link}) => {
-    //       return await getGameLinksFromTeamHomePageLink(link);
-    //     })
-    //   )
-    // )
-    const allGameLinksArr = (
-      await withDelay(
-        0,
-        async ({ link }) => {
-          // console.log(`Fetching game links from ${link}...`);
-          return await getGameLinksFromTeamHomePageLink(link);
-        },
-        allTeamLinks
-      )
-    )
-      .flat()
-      .filter((gameLink): gameLink is string => {
-        const predicate = gameLink !== undefined && gameLink !== null;
-        if (!predicate) console.log("error with gameLink", gameLink);
-        return predicate;
-      });
-    console.log(`Got ${allGameLinksArr.length} game links.`);
+    const allGameLinksArr = await getAllTeamsGamesLinks();
 
     console.log("Fetching all games' data...");
     // const allGamesData = (
@@ -196,6 +157,33 @@ export async function seedGames() {
     console.error(`Error seeding players: ${error}`);
   }
   // console.log(allGameLinksArr.map((gameLinks) => gameLinks.length), allGameLinksArr.length);
+}
+
+async function getAllTeamsGamesLinks() {
+  console.log("Fetching all players from the database...");
+  const allTeamLinks = (await sql<{ link: string; }> `SELECT link FROM teams`)
+    .rows;
+  console.log(`Got ${allTeamLinks.length} team links.`);
+
+  console.log("Fetching all game links...");
+  const allGameLinksArr = (
+    await withDelay(
+      async ({ link }) => {
+        return await getGameLinksFromTeamHomePageLink(link);
+      },
+      allTeamLinks
+    )
+  )
+    .flat()
+    .filter((gameLink): gameLink is string => {
+      const predicate = gameLink !== undefined && gameLink !== null;
+      if (!predicate) console.log("error with gameLink", gameLink);
+      return predicate;
+    })
+    .filter((gameLink, index, arr) => arr.indexOf(gameLink) === index);
+
+  console.log(`Got ${allGameLinksArr.length} game links.`);
+  return allGameLinksArr;
 }
 
 async function main() {
