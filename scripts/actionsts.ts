@@ -108,7 +108,7 @@ export async function getGameLinksFromTeamHomePageLink(
 }
 
 /**
- * Retrieves player stats from a game of given ESPN game ID.
+ * Retrieves player stats of all players in a game from given ESPN game ID.
  * @param espnGameId The ESPN game ID.
  * @returns An array of player stats. stats === null if the player did not play.
  */
@@ -205,11 +205,11 @@ export async function getPlayerStatsFromEspnGameId(espnGameId: number) {
   return {
     team1: team1Stats.map((stats, ind) => {
       if (stats === 'DNP') return {...team1PlayerNames[ind], ...{stats: null}};
-      return {...team1PlayerNames[ind], ...stats};
+      return {...team1PlayerNames[ind], stats};
     }),
     team2: team2Stats.map((stats, ind) => {
       if (stats === 'DNP') return {...team2PlayerNames[ind], ...{stats: null}};
-      return {...team2PlayerNames[ind], ...stats};
+      return {...team2PlayerNames[ind], stats};
     })
   };
 }
