@@ -21,10 +21,10 @@ import { db } from "@vercel/postgres";
  * @returns A promise that resolves to the output array.
  */
 async function withDelay<T, U>(
-  index: number,
   func: (arg: T) => Promise<U>,
   inArr: T[],
-  outArr: U[] = []
+  outArr: U[] = [],
+  index: number = 0,
 ) {
   if (index >= inArr.length) return outArr;
 
@@ -32,7 +32,7 @@ async function withDelay<T, U>(
   const result = await func(inArr[index]);
   outArr.push(result);
   await new Promise((resolve) => setTimeout(resolve, 250));
-  return withDelay(index + 1, func, inArr, outArr);
+  return withDelay(func, inArr, outArr, index + 1);
 }
 
 export async function seedPlayers() {
@@ -66,7 +66,6 @@ export async function seedGames() {
     // )
     const allGamesData = (
       await withDelay(
-        0,
         async (gameLink) => {
           const espnGameId = parseInt(gameLink.split("/")[7]);
           const gameData = await getGameDataFromGameId(espnGameId);
