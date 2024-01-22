@@ -35,14 +35,95 @@ async function withDelay<T, U>(
   return withDelay(func, inArr, outArr, index + 1);
 }
 
-export async function seedPlayers() {
-  console.log("Fetching all players from the database...");
-  const players = await sql<Player>`
-    SELECT * FROM players
-  `;
-  console.log(`Got ${players.rows.length} players.`);
+/**
+ * Inserts games that are missing up to the most recent game that happened today.
+ * Retrieves game data from external sources and inserts it into the database if the game is missing.
+ * @returns {Promise<void>} A promise that resolves once the missing games are inserted into the database.
+ */
+export async function insertMissingGames() {
+  try {
+    const gamesIds = (await sql<Game>`SELECT * FROM games`).rows.map((game) => game.espn_id);
+    console.log(`Found ${gamesIds.length} games in the database.`);
+
+    const allGameLinksArr = await getAllTeamsGamesLinks();
+    const allGameEspnIds = allGameLinksArr.map((gameLink) => parseInt(gameLink.split("/")[7]));
 
 
+    const missingGameIds = allGameEspnIds.filter((espnId) => gamesIds.indexOf(espnId) === -1);
+
+    console.log(`Found ${missingGameIds.length} missing games.`, missingGameIds);
+
+    const missingGamesData = (
+      await withDelay(
+        async (gameId) => {
+          const gameData = await getGameDataFromGameId(gameId);
+          return gameData;
+        },
+        missingGameIds
+      )
+    ).filter((gameData) => {
+      const predicate =
+        gameData.awayTeamName !== null &&
+        gameData.homeTeamName !== null &&
+        gameData.awayTeamName !== undefined &&
+        gameData.homeTeamName !== undefined;
+
+      if (!predicate) console.log("error with gameData", gameData);
+
+      return predicate;
+    });
+    console.log(`Got ${missingGamesData.length} games' data.`);
+
+    // console.log(
+    //   missingGamesData.map((gameData) => `${gameData.homeTeamName} vs ${gameData.awayTeamName} on ${gameData.date.toDateString()}`)
+    // );
+
+    console.log('Inserting missing games into the database...');
+
+    const insertedGames = await Promise.all(
+      missingGamesData.map(
+        async ({
+          date,
+          awayTeamName,
+          awayTeamScore,
+          homeTeamName,
+          homeTeamScore,
+          espnGameId,
+        }) => {
+          if (
+            !homeTeamName ||
+            !awayTeamName ||
+            !homeTeamScore ||
+            !awayTeamScore
+          ) {
+            console.log(
+              `Error with some data: ${homeTeamName}, ${awayTeamName}, ${homeTeamScore}, ${awayTeamScore}`
+            );
+            return null;
+          }
+          const homeTeamId = (
+            await sql<{
+              id: string;
+            }>`SELECT id FROM teams WHERE name = ${homeTeamName}`
+          ).rows[0].id;
+          const awayTeamId = (
+            await sql<{
+              id: string;
+            }>`SELECT id FROM teams WHERE name = ${awayTeamName}`
+          ).rows[0].id;
+
+          return sql`
+        INSERT INTO games (date, home_team_score, away_team_score, home_team_id, away_team_id, espn_id)
+        VALUES (${date.toISOString()}, ${homeTeamScore}, ${awayTeamScore}, ${homeTeamId}, ${awayTeamId}, ${espnGameId})
+      `;
+        }
+      )
+    );
+    console.log(`Inserted ${insertedGames.length} games into the database.`);
+
+  } catch (error) {
+    console.error('Error inserting missing games: ', error);
+  }
 
 }
 
