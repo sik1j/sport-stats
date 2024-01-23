@@ -36,6 +36,207 @@ async function withDelay<T, U>(
 }
 
 /**
+ * Seeds the player statistics into the database.
+ * Fetches all games from the database, retrieves the player statistics for each game,
+ * and inserts the player stats into the player_stats table.
+ * @returns A promise that resolves when the player stats are successfully seeded, or rejects with an error if there was an issue.
+ */
+export async function seedPlayerStats() {
+  try {
+    console.log('Fetching all games from the database...');
+    const games = (await sql<Game>`SELECT * FROM games order by date`).rows;
+    const gameIds = games.map((game) => game.espn_id);
+
+
+    console.log('getting stats for each game...');
+    /**
+     * Retrieves the player statistics from all games using the provided game IDs.
+     * @param gameIds The array of game IDs.
+     * @returns A promise that resolves to an array of player statistics from all games. 
+     * Each element in the array is an object with two properties: team1 and team2. 
+     * Each of these properties is an array of player statistics for that team.
+     */
+    const allPlayerStatsFromAllGames = (await withDelay(
+      async (gameId) => {
+        const playerStats = await getPlayerStatsFromEspnGameId(gameId);
+        playerStats.team1.forEach((playerStat) => {
+          if (!playerStat.lowerCaseName) {
+            console.log("error with playerStat", playerStat);
+          }
+        });
+        return { ...playerStats, gameId };
+      },
+      gameIds
+    )).filter((playerStats) => {
+      const predicate =
+        playerStats.team1.length > 0 &&
+        playerStats.team2.length > 0;
+
+      if (!predicate) console.log("error with playerStats", playerStats);
+
+      return predicate;
+    });
+
+    console.log("Creating player stats table...");
+    await sql`
+    CREATE TABLE IF NOT EXISTS player_stats (
+      id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+      player_id UUID NOT NULL REFERENCES players(id),
+      espn_game_id INT NOT NULL REFERENCES games(espn_id),
+      minutes_played INT NOT NULL,
+      field_goals_made INT NOT NULL,
+      field_goals_attempted INT NOT NULL,
+      three_pointers_made INT NOT NULL,
+      three_pointers_attempted INT NOT NULL,
+      free_throws_made INT NOT NULL,
+      free_throws_attempted INT NOT NULL,
+      rebounds INT NOT NULL,
+      assists INT NOT NULL,
+      steals INT NOT NULL,
+      blocks INT NOT NULL,
+      turnovers INT NOT NULL,
+      fouls INT NOT NULL,
+      plusMinus INT NOT NULL,
+      points INT NOT NULL
+    );
+  `;
+
+    console.log("Inserting player stats into the database...");
+
+    const allPlayers = (await sql<Player>`SELECT * FROM players`).rows;
+
+    const insertedPlayerStats = await Promise.all(
+      allPlayerStatsFromAllGames.map(
+        async (playerStatsForGame) => {
+
+          const team1 = await withDelay(
+              async (playerInfo) => {
+                const player = allPlayers.find((player) => player.espn_id === playerInfo.espnId);
+                if (player === undefined) {
+                  console.log("error with player", playerInfo.lowerCaseName);
+                  return;
+                }
+                const playerId = player.id;
+                let stats = playerInfo.stats;
+
+                if (!stats) {
+                  return;
+                }
+
+                await sql`
+                INSERT INTO player_stats (
+                  player_id,
+                  espn_game_id,
+                  minutes_played,
+                  field_goals_made,
+                  field_goals_attempted,
+                  three_pointers_made,
+                  three_pointers_attempted,
+                  free_throws_made,
+                  free_throws_attempted,
+                  rebounds,
+                  assists,
+                  steals,
+                  blocks,
+                  turnovers,
+                  fouls,
+                  plusMinus,
+                  points
+                )
+                VALUES (
+                  ${playerId},
+                  ${playerStatsForGame.gameId},
+                  ${stats.min},
+                  ${stats.fieldGoalsMade},
+                  ${stats.fieldGoalsAttempted},
+                  ${stats.threePointersMade},
+                  ${stats.threePointersAttempted},
+                  ${stats.freeThrowsMade},
+                  ${stats.freeThrowsAttempted},
+                  ${stats.rebounds},
+                  ${stats.assists},
+                  ${stats.steals},
+                  ${stats.blocks},
+                  ${stats.turnovers},
+                  ${stats.fouls},
+                  ${stats.plusMinus},
+                  ${stats.points}
+                )
+              `
+              },
+              playerStatsForGame.team1
+          );
+
+          const team2 = await withDelay(
+              async (playerInfo) => {
+                const player = allPlayers.find((player) => player.espn_id === playerInfo.espnId);
+                if (player === undefined) {
+                  console.log("error with player", playerInfo.lowerCaseName);
+                  return;
+                }
+                const playerId = player.id;
+                let stats = playerInfo.stats;
+
+                if (!stats) {
+                  return;
+                }
+
+                await sql`
+                INSERT INTO player_stats (
+                  player_id,
+                  espn_game_id,
+                  minutes_played,
+                  field_goals_made,
+                  field_goals_attempted,
+                  three_pointers_made,
+                  three_pointers_attempted,
+                  free_throws_made,
+                  free_throws_attempted,
+                  rebounds,
+                  assists,
+                  steals,
+                  blocks,
+                  turnovers,
+                  fouls,
+                  plusMinus,
+                  points
+                )
+                VALUES (
+                  ${playerId},
+                  ${playerStatsForGame.gameId},
+                  ${stats.min},
+                  ${stats.fieldGoalsMade},
+                  ${stats.fieldGoalsAttempted},
+                  ${stats.threePointersMade},
+                  ${stats.threePointersAttempted},
+                  ${stats.freeThrowsMade},
+                  ${stats.freeThrowsAttempted},
+                  ${stats.rebounds},
+                  ${stats.assists},
+                  ${stats.steals},
+                  ${stats.blocks},
+                  ${stats.turnovers},
+                  ${stats.fouls},
+                  ${stats.plusMinus},
+                  ${stats.points}
+                )
+              `
+              },
+              playerStatsForGame.team2
+          );
+          return team1.flat().concat(team2.flat());
+        }
+      )
+    );
+
+    console.log(`Inserted ${insertedPlayerStats.flat().length} player stats into the database.`);
+  }
+  catch (error) {
+    console.error('Error seeding player stats: ', error);
+  }
+}
+
+/**
  * Inserts games that are missing up to the most recent game that happened today.
  * Retrieves game data from external sources and inserts it into the database if the game is missing.
  * @returns {Promise<void>} A promise that resolves once the missing games are inserted into the database.
@@ -290,6 +491,8 @@ async function main() {
 
   // console.log(testTeamGamesData, testTeamGamesData.length);
   // // console.log(await withDelay(0, async (val) => val + 1, [1, 2, 3, 4, 5]));
+  // await insertMissingGames();
+  await seedPlayerStats();
   console.log("Done.");
 }
 
