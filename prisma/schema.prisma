@@ -1,0 +1,68 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("POSTGRES_PRISMA_URL") // uses connection pooling
+  directUrl = env("POSTGRES_URL_NON_POOLING") // uses a direct connection
+}
+
+model Team {
+  id          Int      @id @default(autoincrement())
+  nbaTeamId Int
+  teamName   String
+  teamCity   String
+  players     Player[]
+  homeGames  Game[]   @relation("homeTeam")
+  awayGames  Game[]   @relation("awayTeam")
+}
+
+model Player {
+  id            Int          @id @default(autoincrement())
+  nbaPersonId Int
+  firstName    String
+  familyName   String
+  team          Team         @relation(fields: [teamId], references: [id])
+  teamId       Int
+  stats         PlayerStat[]
+}
+
+model Game {
+  id           Int          @id @default(autoincrement())
+  nbaGameId  Int
+  gameTimeUTC  DateTime
+  homeTeam    Team         @relation(fields: [homeTeamId], references: [id], name: "homeTeam")
+  homeTeamId Int
+  awayTeam    Team         @relation(fields: [awayTeamId], references: [id], name: "awayTeam")
+  awayTeamId Int
+  playerStats  PlayerStat[]
+}
+
+model PlayerStat {
+  id        Int    @id @default(autoincrement())
+  player    Player @relation(fields: [playerId], references: [id])
+  playerId Int
+  game      Game   @relation(fields: [gameId], references: [id])
+  gameId   Int
+  // stats of the game
+  minutes String
+  fieldGoalsMade Int
+  fieldGoalsAttempted Int
+  threePointersMade Int
+  threePointersAttempted Int
+  freeThrowsMade Int
+  freeThrowsAttempted Int
+  reboundsOffensive Int
+  reboundsDefensive Int
+  assists Int
+  steals Int
+  blocks Int
+  turnovers Int
+  foulsPersonal Int
+  points Int
+  plusMinusPoints Int
+}
