@@ -1,5 +1,16 @@
+export async function withDelay<T,U>(arr: T[], func: (elem: T) => Promise<U> , ind = 0, ms = 100, output: U[] = []) {
+  if (ind < arr.length) {
+    const response = await func(arr[ind]);
+    output.push(response);
+    await new Promise((resolve) => setTimeout(resolve, ms));
+    return withDelay(arr, func, ind + 1, ms, output);
+  } else {
+    return output;
+  }
+}
+
 // Takes date string in from 'MM/DD' and converts it to Date obj
-function convertMMDDtoDate(date) {
+export function convertMMDDtoDate(date: string) {
   const splitVals = date.split("/");
   const month = Number(splitVals[0]) - 1;
   const day = Number(splitVals[1]);
@@ -17,9 +28,9 @@ function convertMMDDtoDate(date) {
 /**
  * Takes a team acronym and returns the full team name
  * @param {string} teamAcronym
- * @returns {string} teamName
+ * @returns {string} teamName as by ESPN (note: 'LAC' is 'LA Clippers')
  */
-function getTeamNameFromAcronym(teamAcronym) {
+export function getTeamNameFromAcronym(teamAcronym: string) {
   switch (teamAcronym) {
     case "ATL":
       return "Atlanta Hawks";
@@ -85,8 +96,3 @@ function getTeamNameFromAcronym(teamAcronym) {
       return "Invalid team acronym";
   }
 }
-
-module.exports = {
-  convertMMDDtoDate,
-  getTeamNameFromAcronym,
-};
