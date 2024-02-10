@@ -35,7 +35,7 @@ model Game {
   id              Int          @id @default(autoincrement())
   isPreseasonGame Boolean
   nbaGameId       Int
-  gameTimeUTC     DateTime
+  gameDateTimeUTC     DateTime
   homeTeam        Team         @relation(fields: [homeTeamId], references: [id], name: "homeTeam")
   homeTeamId      Int
   awayTeam        Team         @relation(fields: [awayTeamId], references: [id], name: "awayTeam")
