@@ -26,7 +26,7 @@ export async function getGamesSchedule() {
         return {
           nbaGameId: game.gameId,
           isPreseasonGame: game.seriesText === "Preseason",
-          gameHasOccured: game.gameStatusText === "Final",
+          gameHasOccured: game.gameStatus === 3,
           gameDateTimeUTC: game.gameDateTimeUTC,
         };
       });
@@ -42,27 +42,18 @@ export async function getGamesSchedule() {
  * @returns An array of player game stats.
  */
 export async function getBoxScoreData(gameId: string) {
-  // const response = await fetch(`https://www.nba.com/game/${gameId}`);
-  // const html = await response.text();
-  // console.log(html);
-
-  const rawData = fs.readFileSync(
-    path.resolve(__dirname, "./local/gameBoxScore.html")
-  );
-
-  // Parse the JSON data
-  const html = rawData.toString();
-
+  const response = await fetch(`https://www.nba.com/game/${gameId}`);
+  const html = await response.text();
   const dom = new JSDOM(html);
   const document = dom.window.document;
 
   const script = document.querySelector("script[id='__NEXT_DATA__']");
+  if (script === null) {
+    console.error(`No script found for game ${gameId}`);
+    console.error(document.body.innerHTML);
+  }
+
   const gameObj: Game = JSON.parse(script!.textContent!).props.pageProps.game;
-  console.dir(JSON.stringify(gameObj), {
-    depth: null,
-    maxArrayLength: null,
-    maxStringLength: null,
-  });
   const homeTeam = gameObj.homeTeam;
   const awayTeam = gameObj.awayTeam;
 
