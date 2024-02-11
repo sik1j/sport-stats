@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import { getBoxScoreData, getGamesSchedule } from "./data";
 
 function valueIsDefined(value: any) {
@@ -47,6 +49,59 @@ async function testGetBoxScoreData() {
   }
 
   return true;
+}
+
+
+async function checkDataCorrectness() {
+  // Read the JSON file
+  const rawData = fs.readFileSync(
+    path.resolve(__dirname, "./preseasonGames.json")
+  );
+
+  // Parse the JSON data
+  const preSeasonData: any[] = JSON.parse(rawData.toString());
+
+  console.log(
+    preSeasonData.length,
+    preSeasonData.every((elem) => elem.isPreseasonGame),
+    preSeasonData.every((elem) => elem.gameHasOccured)
+  );
+
+  console.log("Taytum stats:");
+  const gamesWithTatum = preSeasonData.filter((game) => {
+    return (
+      game.homeTeamData.teamName === "Celtics" ||
+      game.awayTeamData.teamName === "Celtics"
+    );
+    // let team;
+    // if (game.homeTeamData.teamName === 'Boston Celtics' ) {
+    //   team = game.homeTeamData;
+    // } else if (game.awayTeamData.teamName === 'Boston Celtics') {
+    //   team = game.awayTeamData;
+    // } else {
+    //   return false;
+    // }
+
+    // return team.players.find((player: any) => player.familyName === 'Tatum');
+  });
+  const results = gamesWithTatum.map((game) => {
+    return {
+      gameDateTimeUTC: game.gameDateTimeUTC,
+      homeTeam: game.homeTeamData.teamName,
+      awayTeam: game.awayTeamData.teamName,
+      homeTeamScore: game.homeTeamData.score,
+      awayTeamScore: game.awayTeamData.score,
+      tatumStats:
+        game.homeTeamData.players.find(
+          (player: any) => player.familyName === "Tatum"
+        )?.statistics ||
+        game.awayTeamData.players.find(
+          (player: any) => player.familyName === "Tatum"
+        )?.statistics,
+    };
+  });
+
+  console.log(results, gamesWithTatum.length);
 }
 
 async function main() {
