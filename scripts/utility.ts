@@ -1,9 +1,9 @@
-export async function withDelay<T,U>(arr: T[], func: (elem: T) => Promise<U> , ind = 0, ms = 100, output: U[] = []) {
+export async function withDelay<T,U>(arr: T[], func: (elem: T) => Promise<U> ,  ms = 100, ind = 0, output: U[] = []) {
   if (ind < arr.length) {
     const response = await func(arr[ind]);
     output.push(response);
     await new Promise((resolve) => setTimeout(resolve, ms));
-    return withDelay(arr, func, ind + 1, ms, output);
+    return withDelay(arr, func,  ms, ind + 1, output);
   } else {
     return output;
   }
