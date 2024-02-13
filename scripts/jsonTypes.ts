@@ -1,3 +1,19 @@
+export interface ExtractedGame {
+  nbaGameId: string
+  isPreseasonGame: boolean
+  gameHasOccured: boolean
+  gameDateTimeUTC: string
+  homeTeamData: TeamData
+  awayTeamData: TeamData
+}
+
+export interface TeamData {
+  teamName: string
+  teamCity: string
+  score: number
+  players: Player[]
+}
+
 // Purpose: Types for the JSON data returned from the NBA API.
 
 // from specific games 
