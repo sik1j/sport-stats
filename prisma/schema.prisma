@@ -7,7 +7,7 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url  	    = env("DATABASE_URL")
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -35,7 +35,7 @@ model Game {
   id              Int          @id @default(autoincrement())
   isPreseasonGame Boolean
   nbaGameId       String
-  gameDateTimeUTC     DateTime
+  gameDateTimeUTC DateTime
   homeTeam        Team         @relation(fields: [homeTeamId], references: [id], name: "homeTeam")
   homeTeamId      Int
   awayTeam        Team         @relation(fields: [awayTeamId], references: [id], name: "awayTeam")
