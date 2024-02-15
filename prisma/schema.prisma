@@ -13,8 +13,8 @@ datasource db {
 
 model Team {
   id        Int      @id @default(autoincrement())
-  nbaTeamId String
-  teamName  String
+  nbaTeamId String   @unique
+  teamName  String   @unique
   teamCity  String
   players   Player[]
   homeGames Game[]   @relation("homeTeam")
@@ -23,7 +23,7 @@ model Team {
 
 model Player {
   id          Int          @id @default(autoincrement())
-  nbaPersonId String
+  nbaPersonId Int          @unique
   firstName   String
   familyName  String
   team        Team         @relation(fields: [teamId], references: [id])
@@ -34,7 +34,7 @@ model Player {
 model Game {
   id              Int          @id @default(autoincrement())
   isPreseasonGame Boolean
-  nbaGameId       String
+  nbaGameId       String       @unique
   gameDateTimeUTC DateTime
   homeTeam        Team         @relation(fields: [homeTeamId], references: [id], name: "homeTeam")
   homeTeamId      Int
