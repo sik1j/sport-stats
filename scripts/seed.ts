@@ -1,19 +1,16 @@
-import fs from "fs";
-import path from "path";
-import { writeFile } from "fs/promises";
+import { writeFile, readFile } from "fs/promises";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 
-import { VercelPoolClient, sql } from "@vercel/postgres";
-import { db } from "@vercel/postgres";
-import { scheduleRoot } from "./jsonTypes";
+import { Player } from "./jsonTypes";
 
 import { getBoxScoreData, getGamesSchedule } from "./data";
 import { withDelay } from "./utility";
-import {} from "./jsonTypes";
+import { ExtractedGame } from "./jsonTypes";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 async function writeGamesDataToFile() {
   console.error("Getting preseason games...");
