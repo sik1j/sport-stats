@@ -12,7 +12,7 @@ async function testGetGamesSchedule() {
   return data.reduce((acc, game) => {
     if (
       !(
-        valueIsDefined(game.gameHasOccured) &&
+        valueIsDefined(game.gameHasFinished) &&
         valueIsDefined(game.nbaGameId) &&
         valueIsDefined(game.isPreseasonGame) &&
         valueIsDefined(game.gameDateTimeUTC)

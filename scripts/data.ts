@@ -26,7 +26,7 @@ export async function getGamesSchedule() {
         return {
           nbaGameId: game.gameId,
           isPreseasonGame: game.seriesText === "Preseason",
-          gameHasOccured: game.gameStatus === 3,
+          gameHasFinished: game.gameStatus === 3,
           gameDateTimeUTC: game.gameDateTimeUTC,
         };
       });
@@ -58,6 +58,7 @@ export async function getBoxScoreData(gameId: string) {
   const awayTeam = gameObj.awayTeam;
 
   const homeTeamData = {
+    nbaTeamId: homeTeam.teamId.toString(),
     teamName: homeTeam.teamName,
     teamCity: homeTeam.teamCity,
     score: homeTeam.score,
@@ -65,6 +66,7 @@ export async function getBoxScoreData(gameId: string) {
   };
 
   const awayTeamData = {
+    nbaTeamId: awayTeam.teamId.toString(),
     teamName: awayTeam.teamName,
     teamCity: awayTeam.teamCity,
     score: awayTeam.score,
