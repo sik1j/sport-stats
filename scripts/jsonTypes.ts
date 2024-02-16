@@ -1,13 +1,14 @@
 export interface ExtractedGame {
   nbaGameId: string
   isPreseasonGame: boolean
-  gameHasOccured: boolean
+  gameHasFinished: boolean
   gameDateTimeUTC: string
   homeTeamData: TeamData
   awayTeamData: TeamData
 }
 
 export interface TeamData {
+  nbaTeamId: string
   teamName: string
   teamCity: string
   score: number
