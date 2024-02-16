@@ -27,23 +27,86 @@ async function writeGamesDataToFile() {
         return {
           nbaGameId: game.nbaGameId,
           isPreseasonGame: game.isPreseasonGame,
-          gameHasOccured: game.gameHasOccured,
+          gameHasFinished: game.gameHasFinished,
           gameDateTimeUTC: game.gameDateTimeUTC,
           ...boxScoreData,
         };
       } catch (err) {
         console.error(err, game.nbaGameId);
+        return {
+          nbaGameId: game.nbaGameId,
+          isPreseasonGame: game.isPreseasonGame,
+          gameHasFinished: game.gameHasFinished,
+          gameDateTimeUTC: game.gameDateTimeUTC,
+        };
       }
     },
-    1000
+    250
   );
 
   console.error("Writing to file...");
-  await writeFile('./scripts/local/preseasonGames.json', JSON.stringify(gamesData));
+  await writeFile(
+    "./scripts/local/preseasonGames.json",
+    JSON.stringify(gamesData)
+  );
 
   console.error("Finished");
 }
 
+
+  console.error("Finished");
+}
+
+async function updatePlayerData({
+  player,
+  newNbaTeamId,
+}: {
+  player: Player;
+  newNbaTeamId: string;
+}) {
+  const playerData = await prisma.player.findUnique({
+    where: {
+      nbaPersonId: player.personId,
+    },
+    select: {
+      team: true,
+    },
+  });
+
+  // Create player if not exists
+  if (playerData == null) {
+    await prisma.player.create({
+      data: {
+        firstName: player.firstName,
+        familyName: player.familyName,
+        nbaPersonId: player.personId,
+        team: {
+          connect: {
+            nbaTeamId: newNbaTeamId,
+          },
+        },
+      },
+    });
+    return;
+  }
+
+  if (playerData.team.nbaTeamId == newNbaTeamId) return;
+
+  // Update player if team changed
+  await prisma.player.update({
+    where: {
+      nbaPersonId: player.personId,
+    },
+    data: {
+      team: {
+        connect: {
+          nbaTeamId: newNbaTeamId,
+        },
+      },
+    },
+  });
+  console.error("finished updating player table");
+}
 
 async function main() {
   writeGamesDataToFile();
