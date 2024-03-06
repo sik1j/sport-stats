@@ -12,6 +12,34 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+async function getGameData(game: {
+  nbaGameId: string;
+  isPreseasonGame: boolean;
+  gameHasFinished: boolean;
+  gameDateTimeUTC: string;
+}) {
+  try {
+    console.error(`Getting box score data for game ${game.nbaGameId}`);
+    const boxScoreData = await getBoxScoreData(game.nbaGameId);
+    const extractedGame : ExtractedGame = {
+      nbaGameId: game.nbaGameId,
+      isPreseasonGame: game.isPreseasonGame,
+      gameHasFinished: game.gameHasFinished,
+      gameDateTimeUTC: game.gameDateTimeUTC,
+      ...boxScoreData,
+    }
+    return extractedGame ;
+  } catch (err) {
+    console.error(err, game.nbaGameId);
+    return {
+      nbaGameId: game.nbaGameId,
+      isPreseasonGame: game.isPreseasonGame,
+      gameHasFinished: game.gameHasFinished,
+      gameDateTimeUTC: game.gameDateTimeUTC,
+    };
+  }
+}
+
 async function writeGamesDataToFile() {
   console.error("Getting preseason games...");
   const games = await getGamesSchedule();
@@ -20,27 +48,7 @@ async function writeGamesDataToFile() {
   console.error("Getting box score data...");
   const gamesData = await withDelay(
     preseasonGames,
-    async (game) => {
-      try {
-        console.error(`Getting box score data for game ${game.nbaGameId}`);
-        const boxScoreData = await getBoxScoreData(game.nbaGameId);
-        return {
-          nbaGameId: game.nbaGameId,
-          isPreseasonGame: game.isPreseasonGame,
-          gameHasFinished: game.gameHasFinished,
-          gameDateTimeUTC: game.gameDateTimeUTC,
-          ...boxScoreData,
-        };
-      } catch (err) {
-        console.error(err, game.nbaGameId);
-        return {
-          nbaGameId: game.nbaGameId,
-          isPreseasonGame: game.isPreseasonGame,
-          gameHasFinished: game.gameHasFinished,
-          gameDateTimeUTC: game.gameDateTimeUTC,
-        };
-      }
-    },
+    async (game) => getGameData(game),
     250
   );
 
@@ -53,9 +61,58 @@ async function writeGamesDataToFile() {
   console.error("Finished");
 }
 
-async function fillMissingGamesData() {
-  const gamesData = await readFile(
+async function writeMissingGamesDataToFile() {
+  console.error("Getting games...");
+  const games = await getGamesSchedule();
+  const finishedGames = games.filter((game) => game.gameHasFinished);
+
+  const currentGamesData = await readFile(
     "./scripts/local/preseasonGames.json",
+    "utf-8"
+  );
+  const currentGamesJson: ExtractedGame[] = JSON.parse(currentGamesData);
+  // console.error(currentGamesJSON[currentGamesData.length - 1]);
+  // console.error( currentGamesJSON[currentGamesData.length - 1]);
+  const oldestStoredGameDate = new Date(
+
+    currentGamesJson[currentGamesJson.length - 1].gameDateTimeUTC
+  );
+
+  const gamesMissing = finishedGames.filter(
+    (game) => new Date(game.gameDateTimeUTC) > oldestStoredGameDate
+  );
+
+  console.error(gamesMissing.slice(-5));
+  // console.error(gamesMissing[gamesMissing.length - 1])
+  // console.error(gamesMissing.length, "games missing")
+
+  const missingGamesJson = await withDelay(
+    gamesMissing,
+    async (game) => getGameData(game),
+    250
+  );
+
+  let latestGamesJSON: (
+    | ExtractedGame
+    | {
+        nbaGameId: string;
+        isPreseasonGame: boolean;
+        gameHasFinished: boolean;
+        gameDateTimeUTC: string;
+      }
+  )[] = [];
+
+  currentGamesJson.forEach((game) => latestGamesJSON.push(game));
+  latestGamesJSON = latestGamesJSON.concat(missingGamesJson);
+
+  await writeFile( "./scripts/local/preseasonGamesTest.json", JSON.stringify(latestGamesJSON));
+  console.error("Writing to file...");
+}
+
+async function fillMissingGamesData(fileName: string) {
+  console.error(`Getting games from ${fileName}...`);
+  const gamesData = await readFile(
+    fileName,
     "utf-8"
   );
   const gamesDataJSON: ExtractedGame[] = JSON.parse(gamesData);
@@ -66,6 +123,7 @@ async function fillMissingGamesData() {
     if (game.homeTeamData) continue;
 
     try {
+      console.error(`Getting box score data for game ${game.nbaGameId}`);
       const boxScoreData = await getBoxScoreData(game.nbaGameId);
       gamesDataJSON[id] = {
         ...game,
@@ -78,7 +136,7 @@ async function fillMissingGamesData() {
 
   console.error("Writing to file...");
   await writeFile(
-    "./scripts/local/preseasonGames.json",
+    fileName,
     JSON.stringify(gamesDataJSON)
   );
 
@@ -277,19 +335,21 @@ async function writeGamesDataToDB() {
 
 async function main() {
   // writeGamesDataToFile();
-  // fillMissingGamesData();
+  await fillMissingGamesData("./scripts/local/preseasonGamesTest.json");
   // await writeGamesDataToDB();
-  const agg = await prisma.playerStat.aggregate({
-    _avg: {
-      points: true,
-      assists: true,
-      turnovers: true,
-    },
-    where: {
-      AND: [{ player: { familyName: "Wembanyama" } }, { minutes: { not: "" } }],
-    },
-  });
-  console.log(agg);
+  // const agg = await prisma.playerStat.aggregate({
+  //   _avg: {
+  //     points: true,
+  //     assists: true,
+  //     turnovers: true,
+  //   },
+  //   where: {
+  //     AND: [{ player: { familyName: "Wembanyama" } }, { minutes: { not: "" } }],
+  //   },
+  // });
+  // console.log(agg);
+  // await writeMissingGamesDataToFile();
+  console.error("finished");
 
   // console.log(await prisma.playerStat.deleteMany());
   // console.log(await prisma.player.deleteMany());
