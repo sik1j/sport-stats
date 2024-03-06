@@ -73,13 +73,13 @@ async function writeMissingGamesDataToFile(fileName: string) {
   const currentGamesJson: ExtractedGame[] = JSON.parse(currentGamesData);
   // console.error(currentGamesJSON[currentGamesData.length - 1]);
   // console.error( currentGamesJSON[currentGamesData.length - 1]);
-  const oldestStoredGameDate = new Date(
+  const newestStoredGame = new Date(
 
     currentGamesJson[currentGamesJson.length - 1].gameDateTimeUTC
   );
 
   const gamesMissing = finishedGames.filter(
-    (game) => new Date(game.gameDateTimeUTC) > oldestStoredGameDate
+    (game) => new Date(game.gameDateTimeUTC) > newestStoredGame
   );
 
   console.error(gamesMissing.slice(-5));
