@@ -40,7 +40,7 @@ async function getGameData(game: {
   }
 }
 
-async function writeGamesDataToFile() {
+async function writeGamesDataToFile(fileName: string) {
   console.error("Getting preseason games...");
   const games = await getGamesSchedule();
   const preseasonGames = games.filter((game) => game.isPreseasonGame);
@@ -54,20 +54,20 @@ async function writeGamesDataToFile() {
 
   console.error("Writing to file...");
   await writeFile(
-    "./scripts/local/preseasonGames.json",
+    fileName,
     JSON.stringify(gamesData)
   );
 
   console.error("Finished");
 }
 
-async function writeMissingGamesDataToFile() {
+async function writeMissingGamesDataToFile(fileName: string) {
   console.error("Getting games...");
   const games = await getGamesSchedule();
   const finishedGames = games.filter((game) => game.gameHasFinished);
 
   const currentGamesData = await readFile(
-    "./scripts/local/preseasonGames.json",
+    fileName,
     "utf-8"
   );
   const currentGamesJson: ExtractedGame[] = JSON.parse(currentGamesData);
@@ -105,7 +105,7 @@ async function writeMissingGamesDataToFile() {
   currentGamesJson.forEach((game) => latestGamesJSON.push(game));
   latestGamesJSON = latestGamesJSON.concat(missingGamesJson);
 
-  await writeFile( "./scripts/local/preseasonGamesTest.json", JSON.stringify(latestGamesJSON));
+  await writeFile( fileName, JSON.stringify(latestGamesJSON));
   console.error("Writing to file...");
 }
 
@@ -319,9 +319,9 @@ async function insertGameData(game: ExtractedGame) {
   return query;
 }
 
-async function writeGamesDataToDB() {
+async function writeGamesDataToDB(fileName: string) {
   const gamesData = await readFile(
-    "./scripts/local/preseasonGames.json",
+    fileName,
     "utf-8"
   );
   const gamesDataJSON: ExtractedGame[] = JSON.parse(gamesData);
@@ -335,7 +335,6 @@ async function writeGamesDataToDB() {
 
 async function main() {
   // writeGamesDataToFile();
-  await fillMissingGamesData("./scripts/local/preseasonGamesTest.json");
   // await writeGamesDataToDB();
   // const agg = await prisma.playerStat.aggregate({
   //   _avg: {
@@ -348,7 +347,9 @@ async function main() {
   //   },
   // });
   // console.log(agg);
-  // await writeMissingGamesDataToFile();
+  const fileName = "./scripts/local/preseasonGamesTest.json"
+  await fillMissingGamesData(fileName);
+  // await writeMissingGamesDataToFile(fileName);
   console.error("finished");
 
   // console.log(await prisma.playerStat.deleteMany());
