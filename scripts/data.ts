@@ -5,7 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 
-import { scheduleRoot, Game } from "./jsonTypes";
+import { scheduleRoot, Game, TeamData } from "./jsonTypes";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -41,7 +41,7 @@ export async function getGamesSchedule() {
  * @param gameId The nba.com ID of the game.
  * @returns An array of player game stats.
  */
-export async function getBoxScoreData(gameId: string) {
+export async function getBoxScoreData(gameId: string): Promise<{ homeTeamData: TeamData; awayTeamData: TeamData; }> {
   const response = await fetch(`https://www.nba.com/game/${gameId}`);
   const html = await response.text();
   const dom = new JSDOM(html);
@@ -57,7 +57,7 @@ export async function getBoxScoreData(gameId: string) {
   const homeTeam = gameObj.homeTeam;
   const awayTeam = gameObj.awayTeam;
 
-  const homeTeamData = {
+  const homeTeamData : TeamData = {
     nbaTeamId: homeTeam.teamId.toString(),
     teamName: homeTeam.teamName,
     teamCity: homeTeam.teamCity,
@@ -65,7 +65,7 @@ export async function getBoxScoreData(gameId: string) {
     players: homeTeam.players,
   };
 
-  const awayTeamData = {
+  const awayTeamData : TeamData = {
     nbaTeamId: awayTeam.teamId.toString(),
     teamName: awayTeam.teamName,
     teamCity: awayTeam.teamCity,
