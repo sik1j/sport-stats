@@ -317,22 +317,78 @@ async function writeGamesDataToDB(fileName: string) {
   }
 }
 
+async function writeMissingGamesDataToDB(fileName: string) {
+  const gamesData = await readFile(fileName, "utf-8");
+  console.error("reading file");
+  const gamesDataJSON: ExtractedGame[] = JSON.parse(gamesData);
+  console.error(`got ${gamesDataJSON.length} games from file`);
+
+  console.error("getting newest game in db");
+  const newestGameInDBDate = new Date(
+    (await prisma.game.findFirst({
+      orderBy: {
+        gameDateTimeUTC: "desc",
+      },
+      select: {
+        gameDateTimeUTC: true,
+      },
+    }))!.gameDateTimeUTC
+  );
+
+  console.error("getting games that are missing from db");
+  const gamesMissingFromDB = gamesDataJSON.filter(
+    (game) => new Date(game.gameDateTimeUTC) > newestGameInDBDate
+  );
+
+  console.error("writing to db");
+  for (const game of gamesMissingFromDB) {
+    await updateDBFromGame(game);
+  }
+}
+
 async function main() {
   // writeGamesDataToFile();
   // await writeGamesDataToDB();
+  // const tatumId = await prisma.player.findFirst({
+  //   where: {
+  //     AND: [
+  //       {firstName: "Joel"},
+  //       {familyName: "Embiid"},
+  //     ]
+  //   },
+  //   select: {
+  //     id: true,
+  //   }
+  // })
   // const agg = await prisma.playerStat.aggregate({
+  //   where: {
+  //     AND: [
+  //       {playerId: tatumId?.id},
+  //       {game: {
+  //         nbaGameId: {startsWith: "0022"}
+  //       }},
+  //       {minutes: {not: ''}}
+  //     ]
+  //   },
+  //   _sum: {
+  //     points: true,
+  //     assists: true,
+  //   },
   //   _avg: {
   //     points: true,
   //     assists: true,
-  //     turnovers: true,
-  //   },
-  //   where: {
-  //     AND: [{ player: { familyName: "Wembanyama" } }, { minutes: { not: "" } }],
-  //   },
+  //   }
   // });
   // console.log(agg);
-  const fileName = "./scripts/local/preseasonGamesTest.json"
-  await fillMissingGamesData(fileName);
+  // const tatumGames = await prisma.playerStat.findMany({
+  //   where: {
+  //     playerId: tatumId?.id,
+  //   }
+  // });
+  // console.log(tatumGames, tatumGames.length);
+  const fileName = "./scripts/local/gamesSoFar.json";
+  // await fillMissingGamesData(fileName);
+  // await writeMissingGamesDataToDB(fileName);
   // await writeMissingGamesDataToFile(fileName);
   console.error("finished");
 
