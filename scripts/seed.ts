@@ -21,14 +21,14 @@ async function getGameData(game: {
   try {
     console.error(`Getting box score data for game ${game.nbaGameId}`);
     const boxScoreData = await getBoxScoreData(game.nbaGameId);
-    const extractedGame : ExtractedGame = {
+    const extractedGame: ExtractedGame = {
       nbaGameId: game.nbaGameId,
       isPreseasonGame: game.isPreseasonGame,
       gameHasFinished: game.gameHasFinished,
       gameDateTimeUTC: game.gameDateTimeUTC,
       ...boxScoreData,
-    }
-    return extractedGame ;
+    };
+    return extractedGame;
   } catch (err) {
     console.error(err, game.nbaGameId);
     return {
@@ -53,10 +53,7 @@ async function writeGamesDataToFile(fileName: string) {
   );
 
   console.error("Writing to file...");
-  await writeFile(
-    fileName,
-    JSON.stringify(gamesData)
-  );
+  await writeFile(fileName, JSON.stringify(gamesData));
 
   console.error("Finished");
 }
@@ -66,15 +63,11 @@ async function writeMissingGamesDataToFile(fileName: string) {
   const games = await getGamesSchedule();
   const finishedGames = games.filter((game) => game.gameHasFinished);
 
-  const currentGamesData = await readFile(
-    fileName,
-    "utf-8"
-  );
+  const currentGamesData = await readFile(fileName, "utf-8");
   const currentGamesJson: ExtractedGame[] = JSON.parse(currentGamesData);
   // console.error(currentGamesJSON[currentGamesData.length - 1]);
   // console.error( currentGamesJSON[currentGamesData.length - 1]);
   const newestStoredGame = new Date(
-
     currentGamesJson[currentGamesJson.length - 1].gameDateTimeUTC
   );
 
@@ -105,16 +98,13 @@ async function writeMissingGamesDataToFile(fileName: string) {
   currentGamesJson.forEach((game) => latestGamesJSON.push(game));
   latestGamesJSON = latestGamesJSON.concat(missingGamesJson);
 
-  await writeFile( fileName, JSON.stringify(latestGamesJSON));
+  await writeFile(fileName, JSON.stringify(latestGamesJSON));
   console.error("Writing to file...");
 }
 
 async function fillMissingGamesData(fileName: string) {
   console.error(`Getting games from ${fileName}...`);
-  const gamesData = await readFile(
-    fileName,
-    "utf-8"
-  );
+  const gamesData = await readFile(fileName, "utf-8");
   const gamesDataJSON: ExtractedGame[] = JSON.parse(gamesData);
 
   for (let id = 0; id < gamesDataJSON.length; id++) {
@@ -135,10 +125,7 @@ async function fillMissingGamesData(fileName: string) {
   }
 
   console.error("Writing to file...");
-  await writeFile(
-    fileName,
-    JSON.stringify(gamesDataJSON)
-  );
+  await writeFile(fileName, JSON.stringify(gamesDataJSON));
 
   console.error("Finished");
 }
@@ -320,10 +307,7 @@ async function insertGameData(game: ExtractedGame) {
 }
 
 async function writeGamesDataToDB(fileName: string) {
-  const gamesData = await readFile(
-    fileName,
-    "utf-8"
-  );
+  const gamesData = await readFile(fileName, "utf-8");
   const gamesDataJSON: ExtractedGame[] = JSON.parse(gamesData);
 
   for (const game of gamesDataJSON) {
