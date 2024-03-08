@@ -12,7 +12,13 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-async function getGameData(game: {
+/**
+ * Retrieves the game data along with the box score data for a given NBA game.
+ *
+ * @param game - The game object containing the necessary information.
+ * @returns The extracted game object with the box score data.
+ */
+async function getGameWithBoxScore(game: {
   nbaGameId: string;
   isPreseasonGame: boolean;
   gameHasFinished: boolean;
@@ -40,52 +46,54 @@ async function getGameData(game: {
   }
 }
 
-async function writeGamesDataToFile(fileName: string) {
-  console.error("Getting preseason games...");
-  const games = await getGamesSchedule();
-  const preseasonGames = games.filter((game) => game.isPreseasonGame);
+/**
+ * Writes missing games data to a file.
+ *
+ * @param fileName - The name of the file to write the data to.
+ * @returns A promise that resolves when the data is written to the file.
+ */
+async function writeMissingGamesDataToFile(fileName: string) {
+  console.error("Getting scheduled games...");
+  const scheduledGames = await getGamesSchedule();
+  const finishedGames = scheduledGames.filter((game) => game.gameHasFinished);
 
-  console.error("Getting box score data...");
-  const gamesData = await withDelay(
-    preseasonGames,
-    async (game) => getGameData(game),
+  const storedGamesFile = await readFile(fileName, "utf-8");
+  let storedGames: ExtractedGame[] | null;
+  try {
+    storedGames = JSON.parse(storedGamesFile);
+  } catch (e) {
+    storedGames = null;
+  }
+
+  // if no games have been stored yet
+  if (storedGames == null) {
+    const latestGamesJson = await withDelay(
+      finishedGames,
+      async (game) => getGameWithBoxScore(game),
     250
   );
 
+    await writeFile(fileName, JSON.stringify(latestGamesJson));
   console.error("Writing to file...");
-  await writeFile(fileName, JSON.stringify(gamesData));
-
-  console.error("Finished");
+    return;
 }
 
-async function writeMissingGamesDataToFile(fileName: string) {
-  console.error("Getting games...");
-  const games = await getGamesSchedule();
-  const finishedGames = games.filter((game) => game.gameHasFinished);
-
-  const currentGamesData = await readFile(fileName, "utf-8");
-  const currentGamesJson: ExtractedGame[] = JSON.parse(currentGamesData);
-  // console.error(currentGamesJSON[currentGamesData.length - 1]);
-  // console.error( currentGamesJSON[currentGamesData.length - 1]);
-  const newestStoredGame = new Date(
-    currentGamesJson[currentGamesJson.length - 1].gameDateTimeUTC
+  // else find new games to store
+  const newestStoredGameDate = new Date(
+    storedGames[storedGames.length - 1].gameDateTimeUTC
   );
 
-  const gamesMissing = finishedGames.filter(
-    (game) => new Date(game.gameDateTimeUTC) > newestStoredGame
+  const gamesNotStored = finishedGames.filter(
+    (game) => new Date(game.gameDateTimeUTC) > newestStoredGameDate
   );
 
-  console.error(gamesMissing.slice(-5));
-  // console.error(gamesMissing[gamesMissing.length - 1])
-  // console.error(gamesMissing.length, "games missing")
-
-  const missingGamesJson = await withDelay(
-    gamesMissing,
-    async (game) => getGameData(game),
+  const gamesToStore = await withDelay(
+    gamesNotStored,
+    async (game) => getGameWithBoxScore(game),
     250
   );
 
-  let latestGamesJSON: (
+  let updatedGames: (
     | ExtractedGame
     | {
         nbaGameId: string;
@@ -95,13 +103,20 @@ async function writeMissingGamesDataToFile(fileName: string) {
       }
   )[] = [];
 
-  currentGamesJson.forEach((game) => latestGamesJSON.push(game));
-  latestGamesJSON = latestGamesJSON.concat(missingGamesJson);
+  storedGames.forEach((game) => updatedGames.push(game));
+  updatedGames = updatedGames.concat(gamesToStore);
 
-  await writeFile(fileName, JSON.stringify(latestGamesJSON));
+  await writeFile(fileName, JSON.stringify(updatedGames));
   console.error("Writing to file...");
 }
 
+/**
+ * Fills missing games data by retrieving box score data for each game
+ * and updating the gamesDataJSON array.
+ *
+ * @param fileName - The name of the file containing the games data.
+ * @returns A Promise that resolves when the missing games data has been filled.
+ */
 async function fillMissingGamesData(fileName: string) {
   console.error(`Getting games from ${fileName}...`);
   const gamesData = await readFile(fileName, "utf-8");
@@ -130,34 +145,54 @@ async function fillMissingGamesData(fileName: string) {
   console.error("Finished");
 }
 
+/**
+ * Updates the database from a game.
+ *
+ * @param game - The extracted game object.
+ * @returns A Promise that resolves to the query result.
+ */
 async function updateDBFromGame(game: ExtractedGame) {
   console.error("======================================================");
+
   console.error(`Updating DB from game ${game.nbaGameId}...`);
   await updateTeamTable(game);
   console.error("finished updating team table");
+
   console.error("updating player table");
   await updatePlayerTable(game);
   console.error("finished updating player table");
+
   console.error("inserting game data");
   const query = await insertGameData(game);
   console.error("finished inserting game data");
+
   console.error("======================================================");
   return query;
 }
 
+/**
+ * Updates the player table with the new NBA team ID for each player in the game.
+ *
+ * @param game - The extracted game data.
+ * @returns A promise that resolves when the player table is updated.
+ */
 async function updatePlayerTable(game: ExtractedGame) {
   await Promise.all(
     game.homeTeamData.players.map(async (player) =>
-      updatePlayerData({ player, newNbaTeamId: game.homeTeamData.nbaTeamId })
+      updatePlayerData(player, game.homeTeamData.nbaTeamId)
     )
   );
   await Promise.all(
     game.awayTeamData.players.map(async (player) =>
-      updatePlayerData({ player, newNbaTeamId: game.awayTeamData.nbaTeamId })
+      updatePlayerData(player, game.awayTeamData.nbaTeamId)
     )
   );
 }
 
+/**
+ * Updates the team table with the data from the provided game.
+ * @param game - The extracted game data.
+ */
 async function updateTeamTable(game: ExtractedGame) {
   async function doesTeamExist(nbaTeamId: string) {
     const team = await prisma.team.findUnique({
@@ -194,13 +229,15 @@ async function updateTeamTable(game: ExtractedGame) {
   console.error("finished updating team table");
 }
 
-async function updatePlayerData({
-  player,
-  newNbaTeamId,
-}: {
-  player: Player;
-  newNbaTeamId: string;
-}) {
+/**
+ * Updates the player data with a new NBA team ID.
+ * If the player does not exist, it creates a new player with the specified NBA team ID.
+ * If the player's team has changed, it updates the player's team with the new NBA team ID.
+ * @param player - The player object containing the player's details.
+ * @param newNbaTeamId - The new NBA team ID to update the player's team.
+ * @returns Promise<void>
+ */
+async function updatePlayerData(player: Player, newNbaTeamId: string) {
   const playerData = await prisma.player.findUnique({
     where: {
       nbaPersonId: player.personId,
@@ -245,6 +282,11 @@ async function updatePlayerData({
   console.error("finished updating player table");
 }
 
+/**
+ * Inserts game data into the database.
+ * @param game - The extracted game data to be inserted.
+ * @returns A Promise that resolves to the inserted game data.
+ */
 async function insertGameData(game: ExtractedGame) {
   const query = await prisma.game.create({
     data: {
@@ -306,39 +348,40 @@ async function insertGameData(game: ExtractedGame) {
   return query;
 }
 
-async function writeGamesDataToDB(fileName: string) {
-  const gamesData = await readFile(fileName, "utf-8");
-  const gamesDataJSON: ExtractedGame[] = JSON.parse(gamesData);
-
-  for (const game of gamesDataJSON) {
-    if (!game.gameHasFinished) continue;
-
-    await updateDBFromGame(game);
-  }
-}
-
+/**
+ * Writes missing games data to the database.
+ * 
+ * @param fileName - The name of the file containing the games data.
+ * @returns A Promise that resolves when the missing games data is written to the database.
+ */
 async function writeMissingGamesDataToDB(fileName: string) {
   const gamesData = await readFile(fileName, "utf-8");
   console.error("reading file");
-  const gamesDataJSON: ExtractedGame[] = JSON.parse(gamesData);
-  console.error(`got ${gamesDataJSON.length} games from file`);
 
-  console.error("getting newest game in db");
-  const newestGameInDBDate = new Date(
-    (await prisma.game.findFirst({
+  const gamesInFile: ExtractedGame[] = JSON.parse(gamesData) as ExtractedGame[];
+
+  console.error(`got ${gamesInFile.length} games from file`);
+
+  const newestGameInDB = await prisma.game.findFirst({
       orderBy: {
         gameDateTimeUTC: "desc",
       },
       select: {
         gameDateTimeUTC: true,
       },
-    }))!.gameDateTimeUTC
-  );
+  });
+
+  let gamesMissingFromDB;
+  if (newestGameInDB == null) {
+    gamesMissingFromDB = gamesInFile;
+  } else {
+    const newestGameInDBDate = new Date(newestGameInDB.gameDateTimeUTC);
 
   console.error("getting games that are missing from db");
-  const gamesMissingFromDB = gamesDataJSON.filter(
+    gamesMissingFromDB = gamesInFile.filter(
     (game) => new Date(game.gameDateTimeUTC) > newestGameInDBDate
   );
+  }
 
   console.error("writing to db");
   for (const game of gamesMissingFromDB) {
