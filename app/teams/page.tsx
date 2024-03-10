@@ -1,9 +1,18 @@
-import Teams from "@/app/ui/teams";
+import { getTeams } from "@/app/lib/actions";
+import Link from "next/link";
 
-export default async function Page() {
+export default async function Teams() {
+  const teams = await getTeams();
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <Teams />
-   </main>
-  )
+    <div>
+      <h1>Teams:</h1>
+      <div className="flex flex-col">
+        {teams.map((team) => (
+          <Link href={`teams/${team.teamName}`} key={`${team.teamName}`}>
+            {team.teamName}
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
 }
