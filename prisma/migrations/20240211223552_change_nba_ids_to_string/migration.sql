@@ -1,0 +1,8 @@
+-- AlterTable
+ALTER TABLE "Game" ALTER COLUMN "nbaGameId" SET DATA TYPE TEXT;
+
+-- AlterTable
+ALTER TABLE "Player" ALTER COLUMN "nbaPersonId" SET DATA TYPE TEXT;
+
+-- AlterTable
+ALTER TABLE "Team" ALTER COLUMN "nbaTeamId" SET DATA TYPE TEXT;
