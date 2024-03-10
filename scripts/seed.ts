@@ -13,6 +13,15 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 /**
+ * Checks if the extracted games are valid.
+ * @param games - An array of extracted games.
+ * @returns A boolean indicating whether all extracted games have valid home team data.
+ */
+function isExtractedGamesValid(games: ExtractedGame[]) {
+  return games.every((game) => game.homeTeamData);
+}
+
+/**
  * Retrieves the game data along with the box score data for a given NBA game.
  *
  * @param game - The game object containing the necessary information.
@@ -47,12 +56,14 @@ async function getGameWithBoxScore(game: {
 }
 
 /**
- * Writes missing games data to a file.
+ * Asynchronously fetches missing game data, updates a storage file, and indicates if the written data is valid.
  *
- * @param fileName - The name of the file to write the data to.
- * @returns A promise that resolves when the data is written to the file.
+ * @param fileName - The name of the file used to store game data.
+ * @returns A Promise resolving to a boolean:
+ *   - `true` if the stored game data is valid (all games have home team data).
+ *   - `false` if any stored game is missing home team data.
  */
-async function writeMissingGamesDataToFile(fileName: string) {
+async function writeMissingGamesDataToFile(fileName: string): Promise<boolean> {
   console.error("Getting scheduled games...");
   const scheduledGames = await getGamesSchedule();
   const finishedGames = scheduledGames.filter((game) => game.gameHasFinished);
@@ -65,27 +76,22 @@ async function writeMissingGamesDataToFile(fileName: string) {
     storedGames = null;
   }
 
+  let gamesNotStored;
   // if no games have been stored yet
   if (storedGames == null) {
-    const latestGamesJson = await withDelay(
-      finishedGames,
-      async (game) => getGameWithBoxScore(game),
-    250
-  );
+    gamesNotStored = finishedGames;
+    storedGames = [];
+  } else {
+    const newestStoredGameDate = new Date(
+      storedGames[storedGames.length - 1].gameDateTimeUTC
+    );
 
-    await writeFile(fileName, JSON.stringify(latestGamesJson));
-  console.error("Writing to file...");
-    return;
-}
+    gamesNotStored = finishedGames.filter(
+      (game) => new Date(game.gameDateTimeUTC) > newestStoredGameDate
+    );
+  }
 
-  // else find new games to store
-  const newestStoredGameDate = new Date(
-    storedGames[storedGames.length - 1].gameDateTimeUTC
-  );
-
-  const gamesNotStored = finishedGames.filter(
-    (game) => new Date(game.gameDateTimeUTC) > newestStoredGameDate
-  );
+  console.error(`Getting box score data for ${gamesNotStored.length} games...`);
 
   const gamesToStore = await withDelay(
     gamesNotStored,
@@ -108,6 +114,7 @@ async function writeMissingGamesDataToFile(fileName: string) {
 
   await writeFile(fileName, JSON.stringify(updatedGames));
   console.error("Writing to file...");
+  return isExtractedGamesValid(updatedGames as ExtractedGame[]);
 }
 
 /**
@@ -119,18 +126,18 @@ async function writeMissingGamesDataToFile(fileName: string) {
  */
 async function fillMissingGamesData(fileName: string) {
   console.error(`Getting games from ${fileName}...`);
-  const gamesData = await readFile(fileName, "utf-8");
-  const gamesDataJSON: ExtractedGame[] = JSON.parse(gamesData);
+  const gamesText = await readFile(fileName, "utf-8");
+  const gamesData: ExtractedGame[] = JSON.parse(gamesText);
 
-  for (let id = 0; id < gamesDataJSON.length; id++) {
-    const game = gamesDataJSON[id];
+  for (let id = 0; id < gamesData.length; id++) {
+    const game = gamesData[id];
 
     if (game.homeTeamData) continue;
 
     try {
       console.error(`Getting box score data for game ${game.nbaGameId}`);
       const boxScoreData = await getBoxScoreData(game.nbaGameId);
-      gamesDataJSON[id] = {
+      gamesData[id] = {
         ...game,
         ...boxScoreData,
       };
@@ -140,9 +147,10 @@ async function fillMissingGamesData(fileName: string) {
   }
 
   console.error("Writing to file...");
-  await writeFile(fileName, JSON.stringify(gamesDataJSON));
-
+  await writeFile(fileName, JSON.stringify(gamesData));
   console.error("Finished");
+
+  return isExtractedGamesValid(gamesData);
 }
 
 /**
@@ -350,7 +358,7 @@ async function insertGameData(game: ExtractedGame) {
 
 /**
  * Writes missing games data to the database.
- * 
+ *
  * @param fileName - The name of the file containing the games data.
  * @returns A Promise that resolves when the missing games data is written to the database.
  */
@@ -363,12 +371,12 @@ async function writeMissingGamesDataToDB(fileName: string) {
   console.error(`got ${gamesInFile.length} games from file`);
 
   const newestGameInDB = await prisma.game.findFirst({
-      orderBy: {
-        gameDateTimeUTC: "desc",
-      },
-      select: {
-        gameDateTimeUTC: true,
-      },
+    orderBy: {
+      gameDateTimeUTC: "desc",
+    },
+    select: {
+      gameDateTimeUTC: true,
+    },
   });
 
   let gamesMissingFromDB;
@@ -377,10 +385,10 @@ async function writeMissingGamesDataToDB(fileName: string) {
   } else {
     const newestGameInDBDate = new Date(newestGameInDB.gameDateTimeUTC);
 
-  console.error("getting games that are missing from db");
+    console.error("getting games that are missing from db");
     gamesMissingFromDB = gamesInFile.filter(
-    (game) => new Date(game.gameDateTimeUTC) > newestGameInDBDate
-  );
+      (game) => new Date(game.gameDateTimeUTC) > newestGameInDBDate
+    );
   }
 
   console.error("writing to db");
@@ -389,56 +397,27 @@ async function writeMissingGamesDataToDB(fileName: string) {
   }
 }
 
-async function main() {
-  // writeGamesDataToFile();
-  // await writeGamesDataToDB();
-  // const tatumId = await prisma.player.findFirst({
-  //   where: {
-  //     AND: [
-  //       {firstName: "Joel"},
-  //       {familyName: "Embiid"},
-  //     ]
-  //   },
-  //   select: {
-  //     id: true,
-  //   }
-  // })
-  // const agg = await prisma.playerStat.aggregate({
-  //   where: {
-  //     AND: [
-  //       {playerId: tatumId?.id},
-  //       {game: {
-  //         nbaGameId: {startsWith: "0022"}
-  //       }},
-  //       {minutes: {not: ''}}
-  //     ]
-  //   },
-  //   _sum: {
-  //     points: true,
-  //     assists: true,
-  //   },
-  //   _avg: {
-  //     points: true,
-  //     assists: true,
-  //   }
-  // });
-  // console.log(agg);
-  // const tatumGames = await prisma.playerStat.findMany({
-  //   where: {
-  //     playerId: tatumId?.id,
-  //   }
-  // });
-  // console.log(tatumGames, tatumGames.length);
-  const fileName = "./scripts/local/gamesSoFar.json";
-  // await fillMissingGamesData(fileName);
-  // await writeMissingGamesDataToDB(fileName);
-  // await writeMissingGamesDataToFile(fileName);
-  console.error("finished");
+async function extractMissingGamesData(fileName: string) {
+  console.error("Saving games locally...");
+  const isAllDataFilled = await writeMissingGamesDataToFile(fileName);
 
-  // console.log(await prisma.playerStat.deleteMany());
-  // console.log(await prisma.player.deleteMany());
-  // console.log(await prisma.game.deleteMany());
-  // console.log(await prisma.team.deleteMany());
+  let isDataFixed = false;
+  if (!isAllDataFilled) {
+    isDataFixed = await fillMissingGamesData(fileName);
+  }
+
+  if (!isDataFixed) {
+    throw new Error("Data could not be fixed");
+  }
+
+  console.error("Inserting data into DB...");
+  await writeMissingGamesDataToDB(fileName);
+}
+
+async function main() {
+  const prisma = new PrismaClient();
+
+  extractMissingGamesData("./gamesSoFar.json");
 }
 
 main()
